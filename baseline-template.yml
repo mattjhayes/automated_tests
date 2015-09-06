@@ -1,0 +1,252 @@
+---
+#- name: Baseline Template  Playbook
+
+#*** Version 0.1.2
+
+#*** Pass variables on the command line to determine the test type:
+#
+#*** Example nmeta baseline:
+#***   ansible-playbook /home/bob/playbooks/baseline-template.yml --extra-vars "start_nmeta=true start_simple_switch=false results_dir=/home/bob/results/baseline-simpleswitch/"
+#
+#*** Example simple switch baseline:
+#***   ansible-playbook /home/bob/playbooks/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=true results_dir=/home/bob/results/baseline-simpleswitch/"
+#
+#*** Example no SDN baseline:
+#***   ansible-playbook /home/bob/playbooks/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=false results_dir=/home/bob/results/baseline-nosdn/"
+
+#*** Remember to start w80 on server first...
+
+#*** Start by ensuring no test processes are already running:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill controller hort processes
+      command: "pkill -f hort"
+      ignore_errors: True
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "pkill -f ryu-manager"
+      ignore_errors: True
+
+- hosts: clients
+
+  tasks:
+
+    - name: Kill client hort processes
+      command: "pkill -f hort"
+      ignore_errors: True
+
+- hosts: load-generators
+
+  tasks:
+
+    - name: Kill load generator filt processes
+      command: "pkill -f filt"
+      ignore_errors: True
+      
+#*** Now start the main work of the playbook:
+
+#*** Start Ryu on controller (if required) with appropriate app
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Set PYTHONPATH environment variable
+      shell: "PYTHONPATH=."
+      args:
+        chdir: /home/bob/ryu
+
+    - name: Run Ryu with nmeta (if required) on controller in the background
+      shell: "nohup /home/bob/ryu/bin/ryu-manager /home/bob/nmeta/nmeta.py &"
+      args:
+        chdir: /home/bob/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+    - name: Run Ryu with simple switch (if required) on controller in the background
+      shell: "nohup /home/bob/ryu/bin/ryu-manager /home/bob/ryu/ryu/app/simple_switch.py &"
+      args:
+        chdir: /home/bob/ryu
+      async: 90000
+      poll: 0
+      when: start_simple_switch
+
+    - name: Doublecheck that simple switch is running
+      command: "pgrep -f simple_switch.py"
+      when: start_simple_switch
+
+    - name: Doublecheck that nmeta is running
+      command: "pgrep -f nmeta.py"
+      when: start_nmeta
+
+- hosts: clients
+
+  tasks:
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - name: Create a text file of playbook YAML for the record
+      local_action: shell cp /home/bob/playbooks/baseline-template.yml {{ results_dir }}{{ results_timestamp.stdout }}/playbook.txt
+      run_once: true
+
+    - debug: msg="Starting client hort tests..."
+
+    - name: Create client hort version text file
+      shell: "python /home/bob/testtools/hort/hort.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt"
+
+    - name: Retrieve client hort version text
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Run client hort cxn-keep-alive tests in background
+      command: "nohup python /home/bob/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --output-file {{ inventory_hostname }}-hort-cxn-keepalive.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
+    - name: Run client hort cxn-close tests in background
+      command: "nohup python /home/bob/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --no-keepalive --output-file {{ inventory_hostname }}-hort-cxn-close.csv  --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
+#*** Run monitoring on the controller
+
+- hosts: controllers
+
+  tasks:
+
+    - debug: msg="Creating controller result folder..."
+
+    - name: Create controller results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - debug: msg="Starting controller mosp performance monitoring..."
+
+    - name: Create controller mosp version text file
+      shell: "python /home/bob/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+
+    - name: Retrieve controller mosp version text
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Run controller mosp performance monitoring in the background
+      command: "nohup python /home/bob/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
+    - name: Run controller nmeta event rate performance monitoring in the background
+      command: "nohup python /home/bob/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-eventrates.csv --url http://localhost:8080/nmeta/measurement/eventrates/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+    - name: Run controller nmeta event rate performance monitoring in the background
+      command: "nohup python /home/bob/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-packet_time.csv --url http://localhost:8080/nmeta/measurement/metrics/packet_time/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+      when: start_nmeta
+      
+
+#*** Fire up the load generator...
+
+- hosts: load-generators
+
+  tasks:
+    - debug: msg="Starting Load Generator tasks..."
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}"
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - debug: msg="Creating and retrieving filt version text"
+
+    - name: Create filt version text file
+      shell: "sudo /home/bob/testtools/filt/filt.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt"
+
+    - name: Retrieve filt version file
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - debug: msg="Starting filt make-good tests..."
+
+    - name: Run the filt load tests
+      shell: "sudo /home/bob/testtools/filt/filt.py --target-ip 10.1.3.254 --bypass-warn --max-flow-rate 1000 --flow-rate-increase 10 --protocol 6 --initial-flow-rate 10 --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ item[1] }}-{{ item[0] }}.csv --algorithm {{ item[1] }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
+      with_nested:
+        - [ '1' ]
+        - [ 'make-good']
+
+    - name: Sleep for a bit to let normality return after load test
+      local_action: shell sleep 30
+      run_once: true
+
+    - name: Retrieve filt test results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-{{ item[1] }}-{{ item[0] }}.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      with_nested:
+        - [ '1' ]
+        - [ 'make-good']
+
+#*** Stop hort on clients and retrieve results:
+
+- hosts: clients
+
+  tasks:
+
+    - name: Kill client hort processes
+      command: "pkill -f hort"
+      ignore_errors: True
+
+    - name: Retrieve client hort connection keepalive results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-cxn-keepalive.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve client hort connection close results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-cxn-close.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+#*** Stop mosp and hort on controller and retrieve results:
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill controller hort processes
+      command: "pkill -f hort"
+      ignore_errors: True
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "pkill -f ryu-manager"
+      ignore_errors: True
+
+    - name: Retrieve controller mosp performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve controller hort nmeta event rate performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-hort-nmeta-eventrates.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
+
+    - name: Retrieve controller hort nmeta processing time performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-hort-nmeta-packet_time.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
