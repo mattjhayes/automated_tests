@@ -1,0 +1,54 @@
+---
+#- name: filt comparative unit tests
+
+#*** Example flat-top test:
+#***   ansible-playbook ~/automated_tests/filt-unit-test-template.yml --extra-vars "algorithm=flat-top results_dir=~/results/filt-unit-tests/"
+
+- hosts: load-generators
+
+  tasks:
+  
+    - name: Kill load generator filt processes
+      command: "pkill -f filt"
+      ignore_errors: True
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - debug: msg="Creating and retrieving filt version text"
+
+    - name: Create filt version text file
+      shell: "sudo /home/bob/testtools/filt/filt.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt"
+
+    - name: Retrieve filt version file
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - debug: msg="Starting filt {{ algorithm }} test..."
+
+    - name: Run the filt load test
+      shell: "sudo ~/testtools/filt/filt.py --target-ip 10.1.3.254 --bypass-warn --max-flow-rate 1000 --flow-rate-increase 10 --increment-interval 1 --protocol 6 --initial-flow-rate 10 --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ algorithm }}.csv --algorithm {{ algorithm }} --output-path {{ results_dir }}{{ results_timestamp.stdout }}/"
+
+    - name: Sleep for a bit to let normality return after load test
+      local_action: shell sleep 30
+      run_once: true
+
+    - name: Retrieve filt test results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-filt-{{ algorithm }}.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+
+

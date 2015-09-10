@@ -6,13 +6,13 @@
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook /home/bob/playbooks/baseline-template.yml --extra-vars "start_nmeta=true start_simple_switch=false results_dir=/home/bob/results/baseline-simpleswitch/"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=true start_simple_switch=false results_dir=~/results/baseline-simpleswitch/"
 #
 #*** Example simple switch baseline:
-#***   ansible-playbook /home/bob/playbooks/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=true results_dir=/home/bob/results/baseline-simpleswitch/"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=true results_dir=~/results/baseline-simpleswitch/"
 #
 #*** Example no SDN baseline:
-#***   ansible-playbook /home/bob/playbooks/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=false results_dir=/home/bob/results/baseline-nosdn/"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=false results_dir=~/results/baseline-nosdn/"
 
 #*** Remember to start w80 on server first...
 
@@ -60,20 +60,20 @@
     - name: Set PYTHONPATH environment variable
       shell: "PYTHONPATH=."
       args:
-        chdir: /home/bob/ryu
+        chdir: ~/ryu
 
     - name: Run Ryu with nmeta (if required) on controller in the background
-      shell: "nohup /home/bob/ryu/bin/ryu-manager /home/bob/nmeta/nmeta.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta.py &"
       args:
-        chdir: /home/bob/ryu
+        chdir: ~/ryu
       async: 90000
       poll: 0
       when: start_nmeta
 
     - name: Run Ryu with simple switch (if required) on controller in the background
-      shell: "nohup /home/bob/ryu/bin/ryu-manager /home/bob/ryu/ryu/app/simple_switch.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ~/ryu/ryu/app/simple_switch.py &"
       args:
-        chdir: /home/bob/ryu
+        chdir: ~/ryu
       async: 90000
       poll: 0
       when: start_simple_switch

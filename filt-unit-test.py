@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Run baseline tests
+Run filt unit tests
 """
 import datetime
 import time
@@ -23,19 +23,18 @@ from os.path import expanduser
 import sys
 
 version = "0.1.0"
-
 #*** How many times to run the set of tests:
-repeats = 5
-
+repeats = 2
 #*** Types of tests to run:
-tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
+tests = ["flat-top", "make-good", "basic"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/baseline-combined/")
+results_dir = os.path.join(home_dir, "results/filt-unit-tests/")
+print "results_dir is", results_dir
 
 #*** Ansible Playbook to use:
-playbook = os.path.join(home_dir, "automated_tests/baseline-template.yml")
+playbook = os.path.join(home_dir, "automated_tests/filt-unit-test-template.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -58,26 +57,13 @@ for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
-        if test == "baseline-nmeta":
-            start_nmeta="true"
-            start_simple_switch="false"
-        elif test == "baseline-simpleswitch":
-            start_nmeta="false"
-            start_simple_switch="true"
-        elif test == "baseline-nosdn":
-            start_nmeta="false"
-            start_simple_switch="false"
-        else:
-            print "ERROR: unknown test type", test
-            sys.exit()
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
-        playbook_cmd += "\"start_nmeta=" + start_nmeta
-        playbook_cmd += " start_simple_switch=" + start_simple_switch
+        playbook_cmd += "\"algorithm=" + test
         playbook_cmd += " results_dir=" + test_dir + "/\""
         print "playbook_cmd is", playbook_cmd
         
         print "running Ansible playbook..."
         os.system(playbook_cmd)
         print "Sleeping... zzzz"
-        time.sleep(60)
+        time.sleep(2)
         
