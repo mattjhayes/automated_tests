@@ -109,24 +109,24 @@
       register: create_client_results_folder
 
     - name: Create a text file of playbook YAML for the record
-      local_action: shell cp /home/bob/playbooks/baseline-template.yml {{ results_dir }}{{ results_timestamp.stdout }}/playbook.txt
+      local_action: shell cp ~/automated_tests/baseline-template.yml {{ results_dir }}{{ results_timestamp.stdout }}/playbook.txt
       run_once: true
 
     - debug: msg="Starting client hort tests..."
 
     - name: Create client hort version text file
-      shell: "python /home/bob/testtools/hort/hort.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt"
+      shell: "python ~/testtools/hort/hort.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt"
 
     - name: Retrieve client hort version text
       fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
     - name: Run client hort cxn-keep-alive tests in background
-      command: "nohup python /home/bob/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --output-file {{ inventory_hostname }}-hort-cxn-keepalive.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --elapsed-time --output-file {{ inventory_hostname }}-hort-cxn-keepalive.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
       async: 90000
       poll: 0
 
     - name: Run client hort cxn-close tests in background
-      command: "nohup python /home/bob/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --no-keepalive --output-file {{ inventory_hostname }}-hort-cxn-close.csv  --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --elapsed-time  --no-keepalive --output-file {{ inventory_hostname }}-hort-cxn-close.csv  --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
       async: 90000
       poll: 0
 
@@ -144,24 +144,24 @@
     - debug: msg="Starting controller mosp performance monitoring..."
 
     - name: Create controller mosp version text file
-      shell: "python /home/bob/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
 
     - name: Retrieve controller mosp version text
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
     - name: Run controller mosp performance monitoring in the background
-      command: "nohup python /home/bob/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
       async: 90000
       poll: 0
 
     - name: Run controller nmeta event rate performance monitoring in the background
-      command: "nohup python /home/bob/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-eventrates.csv --url http://localhost:8080/nmeta/measurement/eventrates/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      command: "nohup python ~/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-eventrates.csv --url http://localhost:8080/nmeta/measurement/eventrates/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
       async: 90000
       poll: 0
       when: start_nmeta
 
     - name: Run controller nmeta event rate performance monitoring in the background
-      command: "nohup python /home/bob/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-packet_time.csv --url http://localhost:8080/nmeta/measurement/metrics/packet_time/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      command: "nohup python ~/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-packet_time.csv --url http://localhost:8080/nmeta/measurement/metrics/packet_time/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
       async: 90000
       poll: 0
       when: start_nmeta
@@ -183,7 +183,7 @@
     - debug: msg="Creating and retrieving filt version text"
 
     - name: Create filt version text file
-      shell: "sudo /home/bob/testtools/filt/filt.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt"
+      shell: "sudo ~/testtools/filt/filt.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt"
 
     - name: Retrieve filt version file
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
@@ -191,7 +191,7 @@
     - debug: msg="Starting filt make-good tests..."
 
     - name: Run the filt load tests
-      shell: "sudo /home/bob/testtools/filt/filt.py --target-ip 10.1.3.254 --bypass-warn --max-flow-rate 1000 --flow-rate-increase 10 --protocol 6 --initial-flow-rate 10 --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ item[1] }}-{{ item[0] }}.csv --algorithm {{ item[1] }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
+      shell: "sudo ~/testtools/filt/filt.py --target-ip 10.1.3.254  --interface eth1 --bypass-warn --max-flow-rate 1000 --flow-rate-increase 10 --protocol 6 --initial-flow-rate 10 --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ item[1] }}-{{ item[0] }}.csv --algorithm {{ item[1] }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
       with_nested:
         - [ '1' ]
         - [ 'make-good']
