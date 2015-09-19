@@ -281,4 +281,4 @@
 
     - name: Kill web server processes
       command: "pkill -f websvr"
-      ignore_errors: Trued
+      ignore_errors: True
