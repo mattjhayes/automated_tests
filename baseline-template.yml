@@ -49,13 +49,13 @@
       command: "pkill -f filt"
       ignore_errors: True
 
-- hosts: servers
-
-  tasks:
-
-    - name: Kill web server processes
-      command: "pkill -f websvr"
-      ignore_errors: True
+#- hosts: servers
+#
+#  tasks:
+#
+#    - name: Kill web server processes
+#      command: "pkill -f websvr"
+#      ignore_errors: True
       
 #*** Now start the main work of the playbook:
 
@@ -65,12 +65,12 @@
 
   tasks:
 
-    - name: Run webserver in the background
-      shell: "nohup sudo ~/websvr/webpy/websvr.py 80 &"
-      args:
-        chdir: ~/websvr/webpy
-      async: 90000
-      poll: 0
+# - name: Run webserver in the background
+#      shell: "sudo ~/websvr/webpy/websvr.py 80 &"
+#      args:
+#        chdir: ~/websvr/webpy
+#      async: 90000
+#      poll: 0
 
     - name: Doublecheck that webserver is running
       command: "pgrep -f websvr.py"
@@ -275,10 +275,10 @@
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-hort-nmeta-packet_time.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta
 
-- hosts: servers
-
-  tasks:
-
-    - name: Kill web server processes
-      command: "pkill -f websvr"
-      ignore_errors: True
+#- hosts: servers
+#
+#  tasks:
+#
+#    - name: Kill web server processes
+#      command: "pkill -f websvr"
+#      ignore_errors: True
