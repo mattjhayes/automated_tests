@@ -1,7 +1,7 @@
 ---
 #- name: Baseline Template  Playbook
 
-#*** Version 0.1.2
+#*** Version 0.1.3
 
 #*** Pass variables on the command line to determine the test type:
 #
@@ -48,9 +48,33 @@
     - name: Kill load generator filt processes
       command: "pkill -f filt"
       ignore_errors: True
+
+- hosts: servers
+
+  tasks:
+
+    - name: Kill web server processes
+      command: "pkill -f websvr"
+      ignore_errors: True
       
 #*** Now start the main work of the playbook:
 
+#*** Start the web server:
+
+- hosts: servers
+
+  tasks:
+
+    - name: Run webserver in the background
+      shell: "nohup sudo ~/websvr/webpy/websvr.py 80 &"
+      args:
+        chdir: ~/websvr/webpy
+      async: 90000
+      poll: 0
+
+    - name: Doublecheck that webserver is running
+      command: "pgrep -f websvr.py"
+      
 #*** Start Ryu on controller (if required) with appropriate app
 
 - hosts: controllers
@@ -250,3 +274,11 @@
     - name: Retrieve controller hort nmeta processing time performance results
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-hort-nmeta-packet_time.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta
+
+- hosts: servers
+
+  tasks:
+
+    - name: Kill web server processes
+      command: "pkill -f websvr"
+      ignore_errors: Trued
