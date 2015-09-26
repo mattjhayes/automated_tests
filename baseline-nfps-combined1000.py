@@ -35,7 +35,7 @@ home_dir = expanduser("~")
 results_dir = os.path.join(home_dir, "results/baseline-combined/")
 
 #*** Ansible Playbook to use:
-playbook = os.path.join(home_dir, "automated_tests/baseline-template.yml")
+playbook = os.path.join(home_dir, "automated_tests/baseline-nfps-template.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()

@@ -1,0 +1,57 @@
+---
+#- name: sleeptest
+
+#*** Example:
+#***   ansible-playbook ~/automated_tests/baseline-sleeptest-template.yml --extra-vars "results_dir=~/results/sleeptests/"
+
+- hosts: load-generators
+
+  tasks:
+    - name: Record input variables to file for the record
+      copy: content="baseline-sleeptest-template.yml was run with results_dir={{ results_dir}}" dest=/tmp/baseline-sleeptest-template.yml.parameters.txt
+      
+    - name: Kill sleeptest processes
+      command: "pkill -f sleeptest"
+      ignore_errors: True
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - debug: msg="Creating and retrieving sleeptest version text"
+
+    - name: Create sleeptest version text file
+      shell: "~/testtools/filt/sleeptest.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-sleeptest-version.txt"
+
+    - name: Retrieve sleeptest version file
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-sleeptest-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - debug: msg="Starting sleeptest..."
+
+    - name: Run the sleeptest
+      shell: "~/testtools/filt/sleeptest.py --output-file {{ inventory_hostname }}-sleeptest.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/"
+
+    - name: Sleep for a bit to let normality return after test
+      local_action: shell sleep 10
+      run_once: true
+
+    - name: Retrieve sleeptest results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-sleeptest.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve input variables file
+      fetch: src=/tmp/baseline-sleeptest-template.yml.parameters.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Run filt unit tests
+Run sleep tests
 """
 import datetime
 import time
@@ -24,17 +24,16 @@ import sys
 
 version = "0.1.0"
 #*** How many times to run the set of tests:
-repeats = 2
-#*** Types of tests to run:
-tests = ["flat-top", "make-good", "basic"]
+repeats = 3
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/filt-unit-tests/")
+results_dir = os.path.join(home_dir, "results/sleeptests/")
 print "results_dir is", results_dir
 
 #*** Ansible Playbook to use:
-playbook = os.path.join(home_dir, "automated_tests/baseline-filt-template.yml")
+playbook = os.path.join(home_dir, \
+                     "automated_tests/baseline-sleeptest-template.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -44,26 +43,17 @@ print "timestamp is", timestamp
 #*** Create root directory for results:
 os.chdir(results_dir)
 os.mkdir(timestamp)
-test_basedir = os.path.join(results_dir, timestamp)
-print "test_basedir is", test_basedir
-
-#*** Create sub folders
-os.chdir(test_basedir)
-for test in tests:
-    os.mkdir(test)
+test_dir = os.path.join(results_dir, timestamp)
+print "test_dir is", test_dir
 
 #*** Run tests
 for i in range(repeats):
-    for test in tests:
-        print "running test", test
-        test_dir=os.path.join(test_basedir, test)
-        playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
-        playbook_cmd += "\"algorithm=" + test
-        playbook_cmd += " results_dir=" + test_dir + "/\""
-        print "playbook_cmd is", playbook_cmd
-        
-        print "running Ansible playbook..."
-        os.system(playbook_cmd)
-        print "Sleeping... zzzz"
-        time.sleep(2)
+    print "running test"
+    playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
+    playbook_cmd += "\"results_dir=" + test_dir + "/\""
+    print "playbook_cmd is", playbook_cmd
+    print "running Ansible playbook..."
+    os.system(playbook_cmd)
+    print "Sleeping... zzzz"
+    time.sleep(2)
         
