@@ -25,7 +25,7 @@ import sys
 version = "0.1.0"
 
 #*** How many times to run the set of tests:
-repeats = 3
+repeats = 2
 
 #*** Types of tests to run:
 tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
@@ -33,6 +33,15 @@ tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
 results_dir = os.path.join(home_dir, "results/baseline-combined/")
+
+#*** Parameters for filt new flow rate load test:
+target_ip = "10.1.0.7"
+target_mac = "00:00:00:00:00:07"
+interface = "eth1"
+initial_rate = "10"
+max_rate = "1000"
+flow_inc = "10"
+proto = "6"
 
 #*** Ansible Playbook to use:
 playbook = os.path.join(home_dir, "automated_tests/baseline-nfps-template.yml")
@@ -73,7 +82,15 @@ for i in range(repeats):
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
         playbook_cmd += "\"start_nmeta=" + start_nmeta
         playbook_cmd += " start_simple_switch=" + start_simple_switch
-        playbook_cmd += " results_dir=" + test_dir + "/\""
+        playbook_cmd += " results_dir=" + test_dir + "/"
+        playbook_cmd += " target_ip=" + target_ip
+        playbook_cmd += " target_mac=" + target_mac
+        playbook_cmd += " interface=" + interface
+        playbook_cmd += " initial_rate=" + initial_rate
+        playbook_cmd += " max_rate=" + max_rate
+        playbook_cmd += " flow_inc=" + flow_inc
+        playbook_cmd += " proto=" + proto
+        playbook_cmd += "\""
         print "playbook_cmd is", playbook_cmd
         
         print "running Ansible playbook..."

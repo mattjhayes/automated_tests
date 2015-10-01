@@ -1,18 +1,18 @@
 ---
 #- name: Baseline Template  Playbook
 
-#*** Version 0.1.3
+#*** Version 0.1.4
 
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=true start_simple_switch=false results_dir=~/results/baseline-simpleswitch/"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=true start_simple_switch=false results_dir=~/results/baseline-simpleswitch/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 proto=6"
 #
 #*** Example simple switch baseline:
-#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=true results_dir=~/results/baseline-simpleswitch/"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=true results_dir=~/results/baseline-simpleswitch/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 proto=6"
 #
 #*** Example no SDN baseline:
-#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=false results_dir=~/results/baseline-nosdn/"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=false results_dir=~/results/baseline-nosdn/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 proto=6"
 
 #*** Remember to start w80 on server first... This script does not automatically start it...
 
@@ -22,6 +22,9 @@
 
     - name: Doublecheck that webserver is running
       command: "pgrep -f websvr.py"
+
+    - name: Record input variables to file for the record
+      copy: content="baseline-nfps-template.yml was run with start_nmeta={{ start_nmeta }} start_simple_switch={{ start_simple_switch }} results_dir={{ results_dir}} target_ip={{ target_ip }} target_mac={{ target_mac }} interface={{ interface }} initial_rate={{ initial_rate }} max_rate={{ max_rate }} flow_inc={{ flow_inc }} proto={{ proto }}" dest=/tmp/baseline-nfps-template.yml.parameters.txt
 
 #*** Start by ensuring no test processes are already running:
 - hosts: controllers
@@ -124,7 +127,7 @@
       register: create_client_results_folder
 
     - name: Create a text file of playbook YAML for the record
-      local_action: shell cp ~/automated_tests/baseline-template.yml {{ results_dir }}{{ results_timestamp.stdout }}/playbook.txt
+      local_action: shell cp ~/automated_tests/baseline-nfps-template.yml {{ results_dir }}{{ results_timestamp.stdout }}/playbook.txt
       run_once: true
 
     - debug: msg="Starting client hort tests..."
@@ -229,7 +232,7 @@
     - debug: msg="Starting filt make-good tests..."
 
     - name: Run the filt load tests
-      shell: "sudo ~/testtools/filt/filt.py --target-ip 10.1.0.2  --interface eth1 --bypass-warn --max-flow-rate 1000 --flow-rate-increase 10 --protocol 6 --initial-flow-rate 10 --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ item[1] }}-{{ item[0] }}.csv --algorithm {{ item[1] }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
+      shell: "sudo ~/testtools/filt/filt.py --target-ip {{ target_ip }}  --target-mac {{ target_mac }} --interface {{ interface }} --bypass-warn --max-flow-rate {{ max_rate }} --flow-rate-increase {{ flow_inc }} --protocol {{ proto }} --initial-flow-rate {{ initial_rate }} --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ item[1] }}-{{ item[0] }}.csv --algorithm {{ item[1] }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
       with_nested:
         - [ '1' ]
         - [ 'make-good']
@@ -301,3 +304,12 @@
 
     - name: Retrieve switch mosp performance results
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Retrieve file that holds parameters that test was called with:
+
+- hosts: servers
+
+  tasks:
+
+    - name: Retrieve input variables file
+      fetch: src=/tmp/baseline-nfps-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
