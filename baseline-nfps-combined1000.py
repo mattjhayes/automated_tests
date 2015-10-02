@@ -22,10 +22,10 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.0"
+version = "0.1.1"
 
 #*** How many times to run the set of tests:
-repeats = 2
+repeats = 3
 
 #*** Types of tests to run:
 tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
@@ -36,12 +36,14 @@ results_dir = os.path.join(home_dir, "results/baseline-combined/")
 
 #*** Parameters for filt new flow rate load test:
 target_ip = "10.1.0.7"
-target_mac = "00:00:00:00:00:07"
+target_mac = "08:00:27:40:e4:4c"
 interface = "eth1"
-initial_rate = "10"
-max_rate = "1000"
-flow_inc = "10"
+initial_rate = "2"
+max_rate = "200"
+flow_inc = "2"
 proto = "6"
+dport = "12345"
+algorithm = "make-good"
 
 #*** Ansible Playbook to use:
 playbook = os.path.join(home_dir, "automated_tests/baseline-nfps-template.yml")
@@ -90,6 +92,8 @@ for i in range(repeats):
         playbook_cmd += " max_rate=" + max_rate
         playbook_cmd += " flow_inc=" + flow_inc
         playbook_cmd += " proto=" + proto
+        playbook_cmd += " dport=" + dport
+        playbook_cmd += " algorithm=" + algorithm
         playbook_cmd += "\""
         print "playbook_cmd is", playbook_cmd
         
