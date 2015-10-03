@@ -104,6 +104,7 @@
       command: "pgrep -f nmeta.py"
       when: start_nmeta
 
+#*** Run monitoring and tests on the client(s):
 - hosts: clients
 
   tasks:
@@ -148,6 +149,30 @@
       async: 90000
       poll: 0
 
+#*** Run OS monitoring on the switch(es)
+
+- hosts: switches
+
+  tasks:
+
+    - debug: msg="Creating switch result folder..."
+
+    - name: Create switch results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - debug: msg="Starting switch mosp performance monitoring..."
+
+    - name: Create switch mosp version text file
+      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+
+    - name: Retrieve switch mosp version text
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Run switch mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
 #*** Run monitoring on the controller
 
 - hosts: controllers
@@ -183,30 +208,6 @@
       async: 90000
       poll: 0
       when: start_nmeta
-
-#*** Run OS monitoring on the switch(es)
-
-- hosts: switches
-
-  tasks:
-
-    - debug: msg="Creating switch result folder..."
-
-    - name: Create switch results folder
-      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
-
-    - debug: msg="Starting switch mosp performance monitoring..."
-
-    - name: Create switch mosp version text file
-      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
-
-    - name: Retrieve switch mosp version text
-      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-
-    - name: Run switch mosp performance monitoring in the background
-      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
-      async: 90000
-      poll: 0
 
 #*** Fire up the load generator...
 
