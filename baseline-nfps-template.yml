@@ -230,6 +230,9 @@
     - name: Retrieve filt version file
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
+    - name: PING the Load Reflector so that controller sees packet-in of response and has in MAC table
+      shell: "ping -c 1 10.1.0.7"
+
     - debug: msg="Starting filt make-good tests..."
 
     - name: Run the filt load tests
