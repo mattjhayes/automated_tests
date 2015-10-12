@@ -1,0 +1,32 @@
+---
+#- name: Static TC Regression Tests
+
+#*** Version 0.1.0
+
+#*** Run the control test
+- hosts: servers
+
+  tasks:
+
+    - name: Kill any running Iperf processes
+      command: "pkill -f iperf"
+      ignore_errors: True
+
+    - name: Start Iperf on Server
+      shell: "iperf -s -p 5555 -i 1"
+      async: 90000
+      poll: 0
+
+- hosts: clients
+
+  tasks:
+
+    - name: Kill any running Iperf processes
+      command: "pkill -f iperf"
+      ignore_errors: True
+      
+    - name: Start Iperf on Client
+      command: "iperf -c sv1 -p 5555 -t 10"
+      register: iperf_result
+
+    - debug: msg="Iperf result is {{ iperf_result.stdout }}"

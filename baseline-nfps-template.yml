@@ -1,7 +1,7 @@
 ---
 #- name: Baseline Template  Playbook
 
-#*** Version 0.1.5
+#*** Version 0.1.6
 
 #*** Pass variables on the command line to determine the test type:
 #
@@ -88,8 +88,8 @@
       poll: 0
       when: start_nmeta
 
-    - name: Run Ryu with simple switch (if required) on controller in the background
-      shell: "nohup ~/ryu/bin/ryu-manager ~/ryu/ryu/app/simple_switch.py &"
+    - name: Run Ryu with simple switch OFv1.3 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/ryu/ryu/app/simple_switch_13.py &"
       args:
         chdir: ~/ryu
       async: 90000

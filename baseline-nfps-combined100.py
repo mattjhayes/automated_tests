@@ -25,7 +25,7 @@ import sys
 version = "0.1.1"
 
 #*** How many times to run the set of tests:
-repeats = 4
+repeats = 30
 
 #*** Types of tests to run:
 tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
