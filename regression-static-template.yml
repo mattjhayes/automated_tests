@@ -1,9 +1,53 @@
 ---
 #- name: Static TC Regression Tests
 
-#*** Version 0.1.0
+#*** Version 0.1.1
 
-#*** Run the control test
+#*** Pass variables on the command line to determine the test type:
+#
+#*** Example nmeta baseline:
+#***   ansible-playbook ~/automated_tests/regression-static-template.yml --extra-vars "start_nmeta=true duration=10 results_dir=~/results/regression/nmeta-static/ tcp_port=5555 "
+
+#*** Start by ensuring nmeta is not running then start it if required:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill controller hort processes
+      command: "pkill -f hort"
+      ignore_errors: True
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "pkill -f ryu-manager"
+      ignore_errors: True
+
+    - name: Copy static regression main config file into place
+      command: "cp ~/nmeta/config/tests/regression/main_policy_regression_static.yaml ~/nmeta/config/main_policy.yaml"
+
+    - name: Copy static regression qos config file into place
+      command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
+
+    - name: Set PYTHONPATH environment variable
+      shell: "PYTHONPATH=."
+      args:
+        chdir: ~/ryu
+
+    - name: Run Ryu with nmeta (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+    - name: Pause to allow time for switch to connect to controller
+      pause: seconds=30
+      
+#*** Kill any Iperf on the Server and start Iperf server:
 - hosts: servers
 
   tasks:
@@ -13,9 +57,12 @@
       ignore_errors: True
 
     - name: Start Iperf on Server
-      shell: "iperf -s -p 5555 -i 1"
+      shell: "iperf -s -p {{ tcp_port }} -i 1"
       async: 90000
       poll: 0
+
+    - name: Record input variables to file for the record
+      copy: content="regression-static-template.yml was run with start_nmeta={{ start_nmeta }} duration={{ duration }} results_dir={{ results_dir}} tcp_port={{ tcp_port }}" dest=/tmp/regression-static-template.yml.parameters.txt
 
 - hosts: clients
 
@@ -24,9 +71,42 @@
     - name: Kill any running Iperf processes
       command: "pkill -f iperf"
       ignore_errors: True
-      
-    - name: Start Iperf on Client
-      command: "iperf -c sv1 -p 5555 -t 10"
-      register: iperf_result
 
-    - debug: msg="Iperf result is {{ iperf_result.stdout }}"
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - name: Run Iperf test from Client
+      command: "iperf -c sv1 -p {{ tcp_port }} -t {{ duration }} > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt"
+      register: Iperf_result
+
+    - debug: msg="Iperf result is {{ Iperf_result.stdout }}"
+
+    - name: Record Iperf result to file
+      copy: content="{{ Iperf_result.stdout }}" dest={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt
+      
+    - name: Retrieve Iperf results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+#*** Retrieve file that holds parameters that test was called with:
+
+- hosts: servers
+
+  tasks:
+
+    - name: Retrieve input variables file
+      fetch: src=/tmp/regression-static-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
