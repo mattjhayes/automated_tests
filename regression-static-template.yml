@@ -91,7 +91,7 @@
       register: create_client_results_folder
 
     - name: Run Iperf test from Client
-      command: "iperf -c sv1 -p {{ tcp_port }} -t {{ duration }} > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt"
+      command: "iperf -c sv1 -p {{ tcp_port }} -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt"
       register: Iperf_result
 
     - debug: msg="Iperf result is {{ Iperf_result.stdout }}"

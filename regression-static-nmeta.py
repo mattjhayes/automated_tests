@@ -25,7 +25,7 @@ import sys
 version = "0.1.0"
 
 #*** How many times to run the set of tests:
-repeats = 2
+repeats = 5
 
 #*** Types of tests to run:
 tests = ["unconstrained-bw", "constrained-bw"]
