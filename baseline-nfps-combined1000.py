@@ -41,6 +41,7 @@ interface = "eth1"
 initial_rate = "10"
 max_rate = "1000"
 flow_inc = "10"
+incr_interval = "1"
 proto = "6"
 dport = "12345"
 algorithm = "make-good"
@@ -91,6 +92,7 @@ for i in range(repeats):
         playbook_cmd += " initial_rate=" + initial_rate
         playbook_cmd += " max_rate=" + max_rate
         playbook_cmd += " flow_inc=" + flow_inc
+        playbook_cmd += " incr_interval=" + incr_interval
         playbook_cmd += " proto=" + proto
         playbook_cmd += " dport=" + dport
         playbook_cmd += " algorithm=" + algorithm

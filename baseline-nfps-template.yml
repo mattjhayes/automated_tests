@@ -6,13 +6,13 @@
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=true start_simple_switch=false results_dir=~/results/baseline-simpleswitch/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 proto=6 dport=12345 algorithm=make-good"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=true start_simple_switch=false results_dir=~/results/baseline-simpleswitch/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 incr_interval=1 proto=6 dport=12345 algorithm=make-good"
 #
 #*** Example simple switch baseline:
-#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=true results_dir=~/results/baseline-simpleswitch/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 proto=6 dport=12345 algorithm=make-good"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=true results_dir=~/results/baseline-simpleswitch/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 incr_interval=1 proto=6 dport=12345 algorithm=make-good"
 #
 #*** Example no SDN baseline:
-#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=false results_dir=~/results/baseline-nosdn/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 proto=6 dport=12345 algorithm=make-good"
+#***   ansible-playbook ~/automated_tests/baseline-template.yml --extra-vars "start_nmeta=false start_simple_switch=false results_dir=~/results/baseline-nosdn/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 incr_interval=1 proto=6 dport=12345 algorithm=make-good"
 
 #*** Remember to start w80 on server first... This script does not automatically start it...
 
@@ -97,7 +97,7 @@
       when: start_simple_switch
 
     - name: Doublecheck that simple switch is running
-      command: "pgrep -f simple_switch.py"
+      command: "pgrep -f simple_switch_13.py"
       when: start_simple_switch
 
     - name: Doublecheck that nmeta is running
@@ -236,7 +236,7 @@
     - debug: msg="Starting filt make-good tests..."
 
     - name: Run the filt load tests
-      shell: "sudo ~/testtools/filt/filt.py --target-ip {{ target_ip }}  --target-mac {{ target_mac }} --interface {{ interface }} --bypass-warn --max-flow-rate {{ max_rate }} --flow-rate-increase {{ flow_inc }} --protocol {{ proto }} --dport {{ dport }} --initial-flow-rate {{ initial_rate }} --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ algorithm }}.csv --algorithm {{ algorithm }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
+      shell: "sudo ~/testtools/filt/filt.py --target-ip {{ target_ip }}  --target-mac {{ target_mac }} --interface {{ interface }} --bypass-warn --max-flow-rate {{ max_rate }} --flow-rate-increase {{ flow_inc }} --increment-interval {{ incr_interval }} --protocol {{ proto }} --dport {{ dport }} --initial-flow-rate {{ initial_rate }} --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ algorithm }}.csv --algorithm {{ algorithm }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
 
     - name: Sleep for a bit to let normality return after load test
       local_action: shell sleep 30
