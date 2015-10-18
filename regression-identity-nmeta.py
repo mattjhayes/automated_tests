@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Run nmeta static TC regression tests
+Run nmeta identity TC regression tests
 """
 import datetime
 import time
@@ -28,18 +28,20 @@ version = "0.1.0"
 repeats = 3
 
 #*** Types of tests to run:
-tests = ["unconstrained-bw", "constrained-bw"]
+tests = ["lg1-constrained-bw", "pc1-constrained-bw"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/regression/nmeta-static/")
+results_dir = os.path.join(home_dir, "results/regression/nmeta-identity/")
 
 #*** Parameters for regression test:
 duration="10"
+tcp_port="5555"
+start_nmeta="true"
 
 #*** Ansible Playbook to use:
 playbook = os.path.join(home_dir, \
-                    "automated_tests/regression-static-template.yml")
+                    "automated_tests/regression-identity-template.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -62,20 +64,12 @@ for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
-        if test == "unconstrained-bw":
-            start_nmeta="true"
-            tcp_port="5555"
-        elif test == "constrained-bw":
-            start_nmeta="true"
-            tcp_port="1234"
-        else:
-            print "ERROR: unknown test type", test
-            sys.exit()
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
         playbook_cmd += "\"start_nmeta=" + start_nmeta
         playbook_cmd += " duration=" + duration
         playbook_cmd += " results_dir=" + test_dir + "/"
         playbook_cmd += " tcp_port=" + tcp_port
+        playbook_cmd += " test_type=" + test
         playbook_cmd += "\""
         print "playbook_cmd is", playbook_cmd
         
