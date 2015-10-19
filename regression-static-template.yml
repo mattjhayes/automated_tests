@@ -6,27 +6,19 @@
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook ~/automated_tests/regression-static-template.yml --extra-vars "start_nmeta=true duration=10 results_dir=~/results/regression/nmeta-static/ tcp_port=5555 "
+#***   ansible-playbook ~/automated_tests/regression-static-template.yml --extra-vars "start_nmeta=true duration=10 results_dir=~/results/regression/nmeta-static/ policy_name=main_policy_regression_static_2.yaml"
 
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
 
   tasks:
 
-    - name: Kill controller mosp process
-      command: "pkill -f mosp"
-      ignore_errors: True
-
-    - name: Kill controller hort processes
-      command: "pkill -f hort"
-      ignore_errors: True
-
     - name: Kill controller ryu processes (nmeta or simple switch etc)
       command: "pkill -f ryu-manager"
       ignore_errors: True
 
     - name: Copy static regression main config file into place
-      command: "cp ~/nmeta/config/tests/regression/main_policy_regression_static.yaml ~/nmeta/config/main_policy.yaml"
+      command: "cp ~/nmeta/config/tests/regression/{{ policy_name }} ~/nmeta/config/main_policy.yaml"
 
     - name: Copy static regression qos config file into place
       command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
@@ -56,13 +48,18 @@
       command: "pkill -f iperf"
       ignore_errors: True
 
-    - name: Start Iperf on Server
-      shell: "iperf -s -p {{ tcp_port }} -i 1"
+    - name: Start Iperf tcp-1234 on Server
+      shell: "iperf -s -p 1234 -i 1"
+      async: 90000
+      poll: 0
+
+    - name: Start Iperf tcp-5555 on Server
+      shell: "iperf -s -p 5555 -i 1"
       async: 90000
       poll: 0
 
     - name: Record input variables to file for the record
-      copy: content="regression-static-template.yml was run with start_nmeta={{ start_nmeta }} duration={{ duration }} results_dir={{ results_dir}} tcp_port={{ tcp_port }}" dest=/tmp/regression-static-template.yml.parameters.txt
+      copy: content="regression-static-template.yml was run with start_nmeta={{ start_nmeta }} duration={{ duration }} results_dir={{ results_dir}} policy_name={{ policy_name }}" dest=/tmp/regression-static-template.yml.parameters.txt
 
 - hosts: clients
 
@@ -90,11 +87,17 @@
       file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
       register: create_client_results_folder
 
-    - name: Run Iperf test from Client
-      shell: "iperf -c sv1 -p {{ tcp_port }} -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt"
-      
-    - name: Retrieve Iperf results
-      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+    - name: Run Iperf tcp-1234 test from Client
+      shell: "iperf -c sv1 -p 1234 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-1234-iperf_result.txt"
+
+    - name: Run Iperf tcp-5555 test from Client
+      shell: "iperf -c sv1 -p 5555 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt"
+
+    - name: Retrieve Iperf results tcp-1234
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-1234-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve Iperf results tcp-5555
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
 #*** Retrieve file that holds parameters that test was called with:
 

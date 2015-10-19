@@ -22,13 +22,13 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.0"
+version = "0.1.1"
 
 #*** How many times to run the set of tests:
 repeats = 3
 
 #*** Types of tests to run:
-tests = ["unconstrained-bw", "constrained-bw"]
+tests = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
@@ -62,12 +62,12 @@ for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
-        if test == "unconstrained-bw":
+        if test == "constrained-bw-tcp1234":
             start_nmeta="true"
-            tcp_port="5555"
-        elif test == "constrained-bw":
+            policy_name="main_policy_regression_static.yaml"
+        elif test == "constrained-bw-tcp5555":
             start_nmeta="true"
-            tcp_port="1234"
+            policy_name="main_policy_regression_static_2.yaml"
         else:
             print "ERROR: unknown test type", test
             sys.exit()
@@ -75,7 +75,7 @@ for i in range(repeats):
         playbook_cmd += "\"start_nmeta=" + start_nmeta
         playbook_cmd += " duration=" + duration
         playbook_cmd += " results_dir=" + test_dir + "/"
-        playbook_cmd += " tcp_port=" + tcp_port
+        playbook_cmd += " policy_name=" + policy_name
         playbook_cmd += "\""
         print "playbook_cmd is", playbook_cmd
         
