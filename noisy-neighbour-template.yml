@@ -6,6 +6,15 @@
 #*** Example test:
 #***   ansible-playbook ~/automated_tests/noisy-neighbour-template.yml --extra-vars "algorithm=flat-top results_dir=~/results/filt-noisy-neighbour-tests/ cpu_load=false"
 
+#*** Start by ensuring no test processes are already running:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "pkill -f mosp"
+      ignore_errors: True
+
 - hosts: load-generators
 
   tasks:
@@ -46,6 +55,24 @@
 
   tasks:
 
+    - debug: msg="Creating controller result folder..."
+
+    - name: Create controller results folder
+      file: path={{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }} state=directory
+
+    - debug: msg="Starting controller mosp performance monitoring..."
+
+    - name: Create controller mosp version text file
+      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+
+    - name: Retrieve controller mosp version text
+      fetch: src={{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Run controller mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
     - name: Generate CPU load on Controller
       shell: "nohup ~/testtools/cpu-loadgen/cpu-loadgen.py --start-delay 30 --test-duration 60 &"
       async: 90000
@@ -76,3 +103,15 @@
     - name: Retrieve input variables file
       fetch: src=/tmp/baseline-filt-template.yml.parameters.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
+#*** Stop mosp controller and retrieve results:
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "pkill -f mosp"
+      ignore_errors: True
+
+    - name: Retrieve controller mosp performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }}/ flat=yes

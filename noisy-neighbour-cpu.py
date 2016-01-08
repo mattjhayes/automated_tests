@@ -26,9 +26,9 @@ import sys
 
 version = "0.1.0"
 #*** How many times to run the set of tests:
-repeats = 2
+repeats = 5
 #*** Types of tests to run:
-tests = ["flat-top", "make-good", "basic"]
+tests = ["controller-cpu-load", "no-controller-cpu-load"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
@@ -60,9 +60,12 @@ for i in range(repeats):
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
-        playbook_cmd += "\"algorithm=" + test
+        playbook_cmd += "\"algorithm=make-good"
         playbook_cmd += " results_dir=" + test_dir + "/"
-        playbook_cmd += " cpu_load=true" + "\""
+        if test == "controller-cpu-load":
+            playbook_cmd += " cpu_load=true" + "\""
+        else:
+            playbook_cmd += " cpu_load=false" + "\""
         print "playbook_cmd is", playbook_cmd
         
         print "running Ansible playbook..."
