@@ -23,6 +23,9 @@
     - name: Copy static regression qos config file into place
       command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
 
+    - name: Copy standard config file into place
+      command: "cp ~/nmeta/config/tests/config_standard.yaml ~/nmeta/config/config.yaml"
+
     - name: Set PYTHONPATH environment variable
       shell: "PYTHONPATH=."
       args:

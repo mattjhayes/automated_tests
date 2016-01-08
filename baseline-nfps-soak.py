@@ -25,7 +25,7 @@ import sys
 version = "0.1.1"
 
 #*** How many times to run the set of tests:
-repeats = 2
+repeats = 5
 
 #*** Types of tests to run:
 tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
@@ -38,9 +38,9 @@ results_dir = os.path.join(home_dir, "results/baseline-combined/")
 target_ip = "10.1.0.7"
 target_mac = "08:00:27:40:e4:4c"
 interface = "eth1"
-initial_rate = "20"
-max_rate = "45"
-flow_inc = "1"
+initial_rate = "25"
+max_rate = "26"
+flow_inc = "0.01"
 incr_interval = "5"
 proto = "6"
 dport = "12345"

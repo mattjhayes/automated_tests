@@ -1,0 +1,78 @@
+---
+#- name: filt noisy neighbour comparative unit tests
+
+#*** Test impact on filt rate caused by high CPU on another guest
+
+#*** Example test:
+#***   ansible-playbook ~/automated_tests/noisy-neighbour-template.yml --extra-vars "algorithm=flat-top results_dir=~/results/filt-noisy-neighbour-tests/ cpu_load=false"
+
+- hosts: load-generators
+
+  tasks:
+    - name: Record input variables to file for the record
+      copy: content="baseline-filt-template.yml was run with algorithm={{ algorithm }} results_dir={{ results_dir}} cpu_load={{ cpu_load }}" dest=/tmp/filt-noisy-neighbour-template.yml.parameters.txt
+      
+    - name: Kill load generator filt processes
+      command: "pkill -f filt"
+      ignore_errors: True
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - debug: msg="Creating and retrieving filt version text"
+
+    - name: Create filt version text file
+      shell: "~/testtools/filt/filt.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt"
+
+    - name: Retrieve filt version file
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Generate CPU load on Controller
+      shell: "nohup ~/testtools/cpu-loadgen/cpu-loadgen.py --start-delay 30 --test-duration 60 &"
+      async: 90000
+      poll: 0
+      when: cpu_load
+
+- hosts: load-generators
+
+  tasks:
+
+    - debug: msg="Starting filt {{ algorithm }} test..."
+
+    - name: PING the Load Reflector so that controller sees packet-in of response and has in MAC table
+      shell: "ping -c 1 10.1.0.7"
+
+    - debug: msg="Starting filt test..."
+
+    - name: Run the filt load tests
+      shell: "sudo ~/testtools/filt/filt.py --target-ip 10.1.0.7 --target-mac 08:00:27:40:e4:4c --interface eth1 --bypass-warn --max-flow-rate 1000 --flow-rate-increase 10 --increment-interval 1 --protocol 6 --dport 12345 --initial-flow-rate 10 --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ algorithm }}.csv --algorithm {{ algorithm }} --output-path {{ results_dir }}{{ hostvars[groups['load-generators'][0]].results_timestamp.stdout }}/"
+
+    - name: Sleep for a bit to let normality return after load test
+      local_action: shell sleep 30
+      run_once: true
+
+    - name: Retrieve filt test results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-filt-{{ algorithm }}.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve input variables file
+      fetch: src=/tmp/baseline-filt-template.yml.parameters.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+

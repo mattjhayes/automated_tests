@@ -14,7 +14,9 @@
 # limitations under the License.
 
 """
-Run baseline tests
+Run noisy neighbour CPU test agains filt performance
+to see if high CPU on another guest can cause filter
+performance to change
 """
 import datetime
 import time
@@ -22,32 +24,19 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.1"
-
+version = "0.1.0"
 #*** How many times to run the set of tests:
 repeats = 2
-
 #*** Types of tests to run:
-tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
+tests = ["flat-top", "make-good", "basic"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/baseline-combined/")
-
-#*** Parameters for filt new flow rate load test:
-target_ip = "10.1.0.7"
-target_mac = "08:00:27:40:e4:4c"
-interface = "eth1"
-initial_rate = "20"
-max_rate = "45"
-flow_inc = "1"
-incr_interval = "5"
-proto = "6"
-dport = "12345"
-algorithm = "make-good"
+results_dir = os.path.join(home_dir, "results/noisy-neighbour-tests/")
+print "results_dir is", results_dir
 
 #*** Ansible Playbook to use:
-playbook = os.path.join(home_dir, "automated_tests/baseline-nfps-template.yml")
+playbook = os.path.join(home_dir, "automated_tests/noisy-neighbour-template.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -70,37 +59,14 @@ for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
-        if test == "baseline-nmeta":
-            start_nmeta="true"
-            start_simple_switch="false"
-        elif test == "baseline-simpleswitch":
-            start_nmeta="false"
-            start_simple_switch="true"
-        elif test == "baseline-nosdn":
-            start_nmeta="false"
-            start_simple_switch="false"
-        else:
-            print "ERROR: unknown test type", test
-            sys.exit()
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
-        playbook_cmd += "\"start_nmeta=" + start_nmeta
-        playbook_cmd += " start_simple_switch=" + start_simple_switch
+        playbook_cmd += "\"algorithm=" + test
         playbook_cmd += " results_dir=" + test_dir + "/"
-        playbook_cmd += " target_ip=" + target_ip
-        playbook_cmd += " target_mac=" + target_mac
-        playbook_cmd += " interface=" + interface
-        playbook_cmd += " initial_rate=" + initial_rate
-        playbook_cmd += " max_rate=" + max_rate
-        playbook_cmd += " flow_inc=" + flow_inc
-        playbook_cmd += " incr_interval=" + incr_interval
-        playbook_cmd += " proto=" + proto
-        playbook_cmd += " dport=" + dport
-        playbook_cmd += " algorithm=" + algorithm
-        playbook_cmd += "\""
+        playbook_cmd += " cpu_load=true" + "\""
         print "playbook_cmd is", playbook_cmd
         
         print "running Ansible playbook..."
         os.system(playbook_cmd)
         print "Sleeping... zzzz"
-        time.sleep(60)
+        time.sleep(2)
         
