@@ -43,6 +43,18 @@
       command: "pkill -f ryu-manager"
       ignore_errors: True
 
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill nmeta2_dpae processes
+      command: "sudo pkill -f nmeta2_dpae.py"
+      ignore_errors: True
+
 - hosts: clients
 
   tasks:
@@ -119,13 +131,12 @@
 
   tasks:
     - name: Run nmeta2-dpae (if required) on dpae in the background
-      shell: "nohup sudo ~/nmeta2-dpae-bitbucket/nmeta2_dpae.py &"
-      args:
-        chdir: ~/ryu
+      shell: "nohup sudo /home/bob/nmeta2-dpae-bitbucket/nmeta2_dpae.py >/dev/null 2>&1 &"
+      #shell: "sudo su - root; nohup sudo /home/bob/nmeta2-dpae-bitbucket/nmeta2_dpae.py &"
+      #remote_user: root
       async: 90000
       poll: 0
       when: start_nmeta2
-
 
 #*** Run monitoring and tests on the client(s):
 - hosts: clients
@@ -172,6 +183,30 @@
       async: 90000
       poll: 0
 
+#*** Run OS monitoring on the DPAE(es)
+
+- hosts: dpae
+
+  tasks:
+
+    - debug: msg="Creating dpae result folder..."
+
+    - name: Create dpae results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - debug: msg="Starting dpae mosp performance monitoring..."
+
+    - name: Create dpae mosp version text file
+      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+
+    - name: Retrieve dpae mosp version text
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Run dpae mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+      
 #*** Run OS monitoring on the switch(es)
 
 - hosts: switches
@@ -312,6 +347,23 @@
     - name: Retrieve controller hort nmeta processing time performance results
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-hort-nmeta-packet_time.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
+
+#*** Stop nmeta_dpae and mosp on DPAE(es) and retrieve results:
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill dpae nmeta_dpae process
+      command: "sudo pkill -f nmeta2_dpae.py"
+      ignore_errors: True
+
+    - name: Retrieve DPAE mosp performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Stop mosp switch(es) and retrieve results:
 
