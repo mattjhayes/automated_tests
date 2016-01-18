@@ -131,9 +131,8 @@
 
   tasks:
     - name: Run nmeta2-dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
       shell: "nohup sudo /home/bob/nmeta2-dpae-bitbucket/nmeta2_dpae.py >/dev/null 2>&1 &"
-      #shell: "sudo su - root; nohup sudo /home/bob/nmeta2-dpae-bitbucket/nmeta2_dpae.py &"
-      #remote_user: root
       async: 90000
       poll: 0
       when: start_nmeta2
