@@ -32,7 +32,7 @@ tests = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/regression/nmeta-static/")
+results_dir = os.path.join(home_dir, "results/regression/nmeta2-static/")
 
 #*** Parameters for regression test:
 duration="10"
@@ -66,10 +66,10 @@ for i in range(repeats):
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
         if test == "constrained-bw-tcp1234":
-            start_nmeta="true"
+            start_nmeta2="true"
             policy_name="main_policy_regression_static.yaml"
         elif test == "constrained-bw-tcp5555":
-            start_nmeta="true"
+            start_nmeta2="true"
             policy_name="main_policy_regression_static_2.yaml"
         else:
             print "ERROR: unknown test type", test
