@@ -22,32 +22,33 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.1"
+version = "0.1.2"
 
 #*** How many times to run the set of tests:
-repeats = 5
+repeats = 3
 
 #*** Types of tests to run:
-tests = ["baseline-nmeta", "baseline-simpleswitch", "baseline-nosdn"]
+tests = ["nmeta", "simpleswitch", "nosdn"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/baseline-combined/")
+results_dir = os.path.join(home_dir, "results/nfps-load-tests/nmeta-combined/")
 
 #*** Parameters for filt new flow rate load test:
 target_ip = "10.1.0.7"
 target_mac = "08:00:27:40:e4:4c"
 interface = "eth1"
-initial_rate = "25"
-max_rate = "26"
-flow_inc = "0.01"
+initial_rate = "20"
+max_rate = "45"
+flow_inc = "1"
 incr_interval = "5"
 proto = "6"
 dport = "12345"
 algorithm = "make-good"
 
 #*** Ansible Playbook to use:
-playbook = os.path.join(home_dir, "automated_tests/baseline-nfps-template.yml")
+playbook = os.path.join(home_dir, \
+            "automated_tests/nfps-load-tests-template.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -70,20 +71,24 @@ for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
-        if test == "baseline-nmeta":
+        if test == "nmeta":
             start_nmeta="true"
+            start_nmeta2="false"
             start_simple_switch="false"
-        elif test == "baseline-simpleswitch":
+        elif test == "simpleswitch":
             start_nmeta="false"
+            start_nmeta2="false"
             start_simple_switch="true"
-        elif test == "baseline-nosdn":
+        elif test == "nosdn":
             start_nmeta="false"
+            start_nmeta2="false"
             start_simple_switch="false"
         else:
             print "ERROR: unknown test type", test
             sys.exit()
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
         playbook_cmd += "\"start_nmeta=" + start_nmeta
+        playbook_cmd += " start_nmeta2=" + start_nmeta2
         playbook_cmd += " start_simple_switch=" + start_simple_switch
         playbook_cmd += " results_dir=" + test_dir + "/"
         playbook_cmd += " target_ip=" + target_ip
