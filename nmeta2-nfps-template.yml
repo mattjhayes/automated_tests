@@ -90,9 +90,6 @@
     - name: Copy NFPS main config file into place
       command: "cp ~/nmeta2-bitbucket/config/tests/nfps_load/main_policy_nfps_load.yaml ~/nmeta2-bitbucket/config/main_policy.yaml"
 
-    - name: Copy static regression qos config file into place
-      command: "cp ~/nmeta2-bitbucket/config/tests/regression/qos_policy_regression.yaml ~/nmeta2-bitbucket/config/qos_policy.yaml"
-
     - name: Copy standard config file into place
       command: "cp ~/nmeta2-bitbucket/config/tests/config_standard.yaml ~/nmeta2-bitbucket/config/config.yaml"
 
