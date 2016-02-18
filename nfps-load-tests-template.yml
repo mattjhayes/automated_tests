@@ -326,7 +326,7 @@
       #*** Regular PING important as Load Reflector does not return load packets
       #***  so if MAC not known then packets to it will be flooded:
     - name: PING the Load Reflector in background so that Controller sees packet-in of response and has in MAC table
-      command: "nohup ping -c 1000 -i 5 1 10.1.0.7 &"
+      shell: "nohup ping -c 1000 -i 5 10.1.0.7 &"
       async: 90000
       poll: 0
 
@@ -362,6 +362,10 @@
 - hosts: clients
 
   tasks:
+
+    - name: Check client hort processes
+      command: "pgrep -f hort"
+      ignore_errors: True
 
     - name: Kill client hort processes
       command: "pkill -f hort"
