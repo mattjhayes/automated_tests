@@ -89,7 +89,7 @@
       poll: 0
 
     - name: Record input variables to file for the record
-      copy: content="regression-static-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }}duration={{ duration }} results_dir={{ results_dir}} policy_name={{ policy_name }}" dest=/tmp/regression-static-template.yml.parameters.txt
+      copy: content="regression-static-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} duration={{ duration }} results_dir={{ results_dir}} policy_name={{ policy_name }}" dest=/tmp/regression-static-template.yml.parameters.txt
 
 - hosts: clients
 

@@ -32,13 +32,13 @@ tests = ["lg1-constrained-bw", "pc1-constrained-bw"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/regression/nmeta-identity/")
+results_dir = os.path.join(home_dir, "results/regression/nmeta2-identity/")
 
 #*** Parameters for regression test:
 duration="10"
 tcp_port="5555"
-start_nmeta="true"
-start_nmeta2="false"
+start_nmeta="false"
+start_nmeta2="true"
 
 #*** Ansible Playbook to use:
 playbook = os.path.join(home_dir, \
@@ -66,10 +66,8 @@ for i in range(repeats):
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
         if test == "lg1-constrained-bw":
-            start_nmeta="true"
             policy_name="main_policy_regression_identity.yaml"
         elif test == "pc1-constrained-bw":
-            start_nmeta="true"
             policy_name="main_policy_regression_identity_2.yaml"
         else:
             print "ERROR: unknown test type", test

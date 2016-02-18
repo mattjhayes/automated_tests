@@ -1,12 +1,12 @@
 ---
-#- name: Identity TC Regression Tests
+#- name: Static TC Regression Tests
 
 #*** Version 0.1.1
 
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook ~/automated_tests/regression-identity-template.yml --extra-vars "start_nmeta=true duration=10 results_dir=~/results/regression/nmeta-identity/ tcp_port=5555 test_type=lg1-constrained-bw"
+#***   ansible-playbook ~/automated_tests/regression-identity-template.yml --extra-vars "start_nmeta=true start_nmeta2=false duration=10 results_dir=~/results/regression/nmeta-identity/ policy_name=main_policy_regression_identity_2.yaml"
 
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
@@ -17,19 +17,25 @@
       command: "pkill -f ryu-manager"
       ignore_errors: True
 
-    - name: Copy identity regression main config file into place
-      command: "cp ~/nmeta/config/tests/regression/main_policy_regression_identity.yaml ~/nmeta/config/main_policy.yaml"
-      when: test_type == "lg1-constrained-bw"
-
-    - name: Copy identity regression main config file into place
-      command: "cp ~/nmeta/config/tests/regression/main_policy_regression_identity_2.yaml ~/nmeta/config/main_policy.yaml"
-      when: test_type == "pc1-constrained-bw"
+    - name: Copy static regression main config file into place
+      command: "cp ~/nmeta/config/tests/regression/{{ policy_name }} ~/nmeta/config/main_policy.yaml"
+      when: start_nmeta
 
     - name: Copy static regression qos config file into place
       command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
+      when: start_nmeta
 
     - name: Copy standard config file into place
       command: "cp ~/nmeta/config/tests/config_standard.yaml ~/nmeta/config/config.yaml"
+      when: start_nmeta
+
+    - name: Copy identity regression main config file into place
+      command: "cp ~/nmeta2-bitbucket/config/tests/regression/{{ policy_name }} ~/nmeta2-bitbucket/config/main_policy.yaml"
+      when: start_nmeta2
+
+    - name: Copy standard config file into place
+      command: "cp ~/nmeta2-bitbucket/config/tests/config_standard.yaml ~/nmeta2-bitbucket/config/config.yaml"
+      when: start_nmeta2
 
     - name: Set PYTHONPATH environment variable
       shell: "PYTHONPATH=."
@@ -44,8 +50,24 @@
       poll: 0
       when: start_nmeta
 
+    - name: Run Ryu with nmeta2 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2-bitbucket/nmeta2.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Check nmeta is running (if required) on controller
+      command: "pgrep -f nmeta.py"
+      when: start_nmeta
+
+    - name: Check nmeta2 is running (if required) on controller
+      command: "pgrep -f nmeta2.py"
+      when: start_nmeta2
+
     - name: Pause to allow time for switch to connect to controller
-      pause: seconds=30
+      pause: seconds=10
       
 #*** Kill any Iperf on the Server and start Iperf server:
 - hosts: servers
@@ -62,8 +84,30 @@
       poll: 0
 
     - name: Record input variables to file for the record
-      copy: content="regression-static-template.yml was run with start_nmeta={{ start_nmeta }} duration={{ duration }} results_dir={{ results_dir}} tcp_port={{ tcp_port }}" dest=/tmp/regression-static-template.yml.parameters.txt
+      copy: content="regression-identity-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} duration={{ duration }} results_dir={{ results_dir}} policy_name={{ policy_name }}" dest=/tmp/regression-identity-template.yml.parameters.txt
 
+#*** Data Plane Auxiliary Engine, when doing nmeta2:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2_dpae processes
+      command: "sudo pkill -f nmeta2_dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Run nmeta2-dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2-dpae-bitbucket/nmeta2_dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Doublecheck that nmeta2_dpae.py is running
+      command: "pgrep -f nmeta2_dpae.py"
+      when: start_nmeta2
+
+#*** Ensure PCs in clean state, generate results timestamp and run tests:
 - hosts: clients
 
   tasks:
@@ -88,7 +132,6 @@
 
     - name: Create client results folder
       file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
-      register: create_client_results_folder
 
     - name: Run Iperf test from Client
       shell: "iperf -c sv1 -p {{ tcp_port }} -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt"
@@ -118,6 +161,7 @@
     - name: Retrieve Iperf results from load generator
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout  }}/{{ inventory_hostname }}-iperf_result.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout  }}/ flat=yes
 
+
 #*** Retrieve file that holds parameters that test was called with:
 
 - hosts: servers
@@ -125,4 +169,40 @@
   tasks:
 
     - name: Retrieve input variables file
-      fetch: src=/tmp/regression-static-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src=/tmp/regression-identity-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Dump and retrieve the Switch Flow Table for the record:
+
+- hosts: switches
+
+  tasks:
+
+    - name: Create switch results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - name: Dump the Switch Flow Table
+      shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt"
+
+    - name: Retrieve the Switch Flow Table
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Stop nmeta_dpae (when nmeta2):
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae nmeta_dpae process
+      command: "sudo pkill -f nmeta2_dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+#*** Finish by stopping any Ryu processes:
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "pkill -f ryu-manager"
+      ignore_errors: True
