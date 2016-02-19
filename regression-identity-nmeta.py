@@ -66,10 +66,8 @@ for i in range(repeats):
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
         if test == "lg1-constrained-bw":
-            start_nmeta="true"
             policy_name="main_policy_regression_identity.yaml"
         elif test == "pc1-constrained-bw":
-            start_nmeta="true"
             policy_name="main_policy_regression_identity_2.yaml"
         else:
             print "ERROR: unknown test type", test
