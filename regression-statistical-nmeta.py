@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Run nmeta identity TC regression tests
+Run nmeta statistical TC regression tests
 """
 import datetime
 import time
@@ -25,24 +25,22 @@ import sys
 version = "0.1.0"
 
 #*** How many times to run the set of tests:
-repeats = 6
+repeats = 3
 
 #*** Types of tests to run:
-tests = ["lg1-constrained-bw", "pc1-constrained-bw"]
+tests = ["constrained-bw-iperf", "unconstrained-bw-iperf"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/regression/nmeta2-identity/")
+results_dir = os.path.join(home_dir,
+                                "results/regression/nmeta-statistical/")
 
 #*** Parameters for regression test:
 duration="10"
-tcp_port="5555"
-start_nmeta="false"
-start_nmeta2="true"
 
 #*** Ansible Playbook to use:
 playbook = os.path.join(home_dir, \
-                    "automated_tests/regression-identity-template.yml")
+                    "automated_tests/regression-statistical-template.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -60,15 +58,20 @@ os.chdir(test_basedir)
 for test in tests:
     os.mkdir(test)
 
+start_nmeta="false"
+start_nmeta2="false"
+
 #*** Run tests
 for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
-        if test == "lg1-constrained-bw":
-            policy_name="main_policy_regression_identity.yaml"
-        elif test == "pc1-constrained-bw":
-            policy_name="main_policy_regression_identity_2.yaml"
+        if test == "constrained-bw-iperf":
+            start_nmeta="true"
+            policy_name="main_policy_regression_statistical.yaml"
+        elif test == "unconstrained-bw-iperf":
+            start_nmeta="true"
+            policy_name="main_policy_regression_statistical_control.yaml"
         else:
             print "ERROR: unknown test type", test
             sys.exit()
@@ -77,8 +80,6 @@ for i in range(repeats):
         playbook_cmd += " start_nmeta2=" + start_nmeta2
         playbook_cmd += " duration=" + duration
         playbook_cmd += " results_dir=" + test_dir + "/"
-        playbook_cmd += " tcp_port=" + tcp_port
-        playbook_cmd += " test_type=" + test
         playbook_cmd += " policy_name=" + policy_name
         playbook_cmd += "\""
         print "playbook_cmd is", playbook_cmd
