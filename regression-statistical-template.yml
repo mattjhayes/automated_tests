@@ -30,11 +30,11 @@
       when: start_nmeta
 
     - name: Copy static regression main config file into place
-      command: "cp ~/nmeta2-bitbucket/config/tests/regression/{{ policy_name }} ~/nmeta2-bitbucket/config/main_policy.yaml"
+      command: "cp ~/nmeta2/config/tests/regression/{{ policy_name }} ~/nmeta2/config/main_policy.yaml"
       when: start_nmeta2
 
     - name: Copy standard config file into place
-      command: "cp ~/nmeta2-bitbucket/config/tests/config_standard.yaml ~/nmeta2-bitbucket/config/config.yaml"
+      command: "cp ~/nmeta2/config/tests/config_standard.yaml ~/nmeta2/config/config.yaml"
       when: start_nmeta2
 
     - name: Set PYTHONPATH environment variable
@@ -51,7 +51,7 @@
       when: start_nmeta
 
     - name: Run Ryu with nmeta2 (if required) on controller in the background
-      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2-bitbucket/nmeta2.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2.py &"
       args:
         chdir: ~/ryu
       async: 90000
@@ -85,6 +85,31 @@
 
     - name: Record input variables to file for the record
       copy: content="regression-static-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} duration={{ duration }} results_dir={{ results_dir}} policy_name={{ policy_name }}" dest=/tmp/regression-static-template.yml.parameters.txt
+
+#*** Data Plane Auxiliary Engine, when doing nmeta2:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2_dpae processes
+      command: "sudo pkill -f nmeta2_dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Run nmeta2-dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2-dpae/nmeta2_dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Pause to allow time for DPAE to connect to controller
+      pause: seconds=30
+      when: start_nmeta2
+
+    - name: Doublecheck that nmeta2_dpae.py is running
+      command: "pgrep -f nmeta2_dpae.py"
+      when: start_nmeta2
 
 - hosts: clients
 

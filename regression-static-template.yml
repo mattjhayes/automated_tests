@@ -30,11 +30,11 @@
       when: start_nmeta
 
     - name: Copy static regression main config file into place
-      command: "cp ~/nmeta2-bitbucket/config/tests/regression/{{ policy_name }} ~/nmeta2-bitbucket/config/main_policy.yaml"
+      command: "cp ~/nmeta2/config/tests/regression/{{ policy_name }} ~/nmeta2/config/main_policy.yaml"
       when: start_nmeta2
 
     - name: Copy standard config file into place
-      command: "cp ~/nmeta2-bitbucket/config/tests/config_standard.yaml ~/nmeta2-bitbucket/config/config.yaml"
+      command: "cp ~/nmeta2/config/tests/config_standard.yaml ~/nmeta2/config/config.yaml"
       when: start_nmeta2
 
     - name: Set PYTHONPATH environment variable
@@ -51,7 +51,7 @@
       when: start_nmeta
 
     - name: Run Ryu with nmeta2 (if required) on controller in the background
-      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2-bitbucket/nmeta2.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2.py &"
       args:
         chdir: ~/ryu
       async: 90000
