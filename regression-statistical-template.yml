@@ -166,6 +166,19 @@
     - name: Retrieve input variables file
       fetch: src=/tmp/regression-static-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
+#*** Retrieve copy of main policy file that was used:
+- hosts: controllers
+
+  tasks:
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
 #*** Finish by stopping any Ryu processes:
 - hosts: controllers
 
