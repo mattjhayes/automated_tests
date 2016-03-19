@@ -30,11 +30,11 @@
       when: start_nmeta
 
     - name: Copy identity regression main config file into place
-      command: "cp ~/nmeta2/config/tests/regression/{{ policy_name }} ~/nmeta2/config/main_policy.yaml"
+      command: "cp ~/nmeta2/nmeta2/config/tests/regression/{{ policy_name }} ~/nmeta2/nmeta2/config/main_policy.yaml"
       when: start_nmeta2
 
     - name: Copy standard config file into place
-      command: "cp ~/nmeta2/config/tests/config_standard.yaml ~/nmeta2/config/config.yaml"
+      command: "cp ~/nmeta2/nmeta2/config/tests/config_standard.yaml ~/nmeta2/nmeta2/config/config.yaml"
       when: start_nmeta2
 
     - name: Set PYTHONPATH environment variable
@@ -49,7 +49,7 @@
       when: start_nmeta
 
     - name: Run Ryu with nmeta2 (if required) on controller in the background
-      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2/nmeta2.py &"
       args:
         chdir: ~/ryu
       async: 90000
@@ -89,20 +89,20 @@
 
   tasks:
 
-    - name: Kill nmeta2_dpae processes
-      command: "sudo pkill -f nmeta2_dpae.py"
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
       ignore_errors: True
       when: start_nmeta2
 
     - name: Run nmeta2-dpae (if required) on dpae in the background
       #*** Note the use of redirect of output, otherwise will get broken pipe error:
-      shell: "nohup sudo /home/bob/nmeta2-dpae/nmeta2_dpae.py >/dev/null 2>&1 &"
+      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
       async: 90000
       poll: 0
       when: start_nmeta2
 
-    - name: Doublecheck that nmeta2_dpae.py is running
-      command: "pgrep -f nmeta2_dpae.py"
+    - name: Doublecheck that nmeta2dpae.py is running
+      command: "pgrep -f nmeta2dpae.py"
       when: start_nmeta2
 
 #*** Ensure PCs in clean state, generate results timestamp and run tests:
@@ -214,7 +214,7 @@
       when: start_nmeta
 
     - name: Retrieve the main policy file
-      fetch: src=~/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
 #*** Stop nmeta_dpae (when nmeta2):
@@ -224,7 +224,7 @@
   tasks:
 
     - name: Kill dpae nmeta_dpae process
-      command: "sudo pkill -f nmeta2_dpae.py"
+      command: "sudo pkill -f nmeta2dpae.py"
       ignore_errors: True
       when: start_nmeta2
 
