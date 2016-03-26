@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Run nmeta statistical TC regression tests
+Run nmeta2 statistical TC regression tests
 """
 import datetime
 import time
@@ -33,7 +33,7 @@ tests = ["constrained-bw-iperf", "unconstrained-bw-iperf"]
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
 results_dir = os.path.join(home_dir,
-                                "results/regression/nmeta-statistical/")
+                                "results/regression/nmeta2-statistical/")
 
 #*** Parameters for regression test:
 duration="10"
@@ -68,10 +68,10 @@ for i in range(repeats):
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
         if test == "constrained-bw-iperf":
-            start_nmeta="true"
+            start_nmeta2="true"
             policy_name="main_policy_regression_statistical.yaml"
         elif test == "unconstrained-bw-iperf":
-            start_nmeta="true"
+            start_nmeta2="true"
             policy_name="main_policy_regression_statistical_control.yaml"
         else:
             print "ERROR: unknown test type", test
