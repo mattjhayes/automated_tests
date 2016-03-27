@@ -128,6 +128,9 @@
 
     - debug: msg="Creating local and remote result folders..."
 
+    - name: send PING to server so that MAC table is current in both directions
+      shell: "ping -c 1 sv1" 
+
     - name: Create local results folder
       local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
       register: create_local_results_folder
