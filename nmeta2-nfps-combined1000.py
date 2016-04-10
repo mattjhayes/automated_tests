@@ -22,13 +22,13 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.2"
+version = "0.2.0"
 
 #*** How many times to run the set of tests:
 repeats = 3
 
 #*** Types of tests to run:
-tests = ["nmeta2", "simpleswitch", "nosdn"]
+tests = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
@@ -71,17 +71,30 @@ for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
-        if test == "nmeta2":
+        if test == "nmeta":
+            start_nmeta="true"
+            start_nmeta2="false"
+            nmeta2_mode="none"
+            start_simple_switch="false"
+        elif test == "nmeta2-active":
             start_nmeta="false"
             start_nmeta2="true"
+            nmeta2_mode="active"
+            start_simple_switch="false"
+        elif test == "nmeta2-passive":
+            start_nmeta="false"
+            start_nmeta2="true"
+            nmeta2_mode="passive"
             start_simple_switch="false"
         elif test == "simpleswitch":
             start_nmeta="false"
             start_nmeta2="false"
+            nmeta2_mode="none"
             start_simple_switch="true"
         elif test == "nosdn":
             start_nmeta="false"
             start_nmeta2="false"
+            nmeta2_mode="none"
             start_simple_switch="false"
         else:
             print "ERROR: unknown test type", test
@@ -90,6 +103,7 @@ for i in range(repeats):
         playbook_cmd += "\"start_nmeta=" + start_nmeta
         playbook_cmd += " start_nmeta2=" + start_nmeta2
         playbook_cmd += " start_simple_switch=" + start_simple_switch
+        playbook_cmd += " nmeta2_mode=" + nmeta2_mode
         playbook_cmd += " results_dir=" + test_dir + "/"
         playbook_cmd += " target_ip=" + target_ip
         playbook_cmd += " target_mac=" + target_mac
