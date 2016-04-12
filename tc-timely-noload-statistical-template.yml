@@ -1,12 +1,12 @@
 ---
-#- name: Identity TC Regression Tests
+#- name: TC Timeliness Tests of Statistical Classifier
 
-#*** Version 0.1.1
+#*** Version 0.1.0
 
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook ~/automated_tests/regression-identity-template.yml --extra-vars "start_nmeta=true start_nmeta2=false duration=10 results_dir=~/results/regression/nmeta-identity/ test_type=pc1_constrained policy_name=main_policy_regression_identity_2.yaml"
+#***   ansible-playbook ~/automated_tests/tc-timely-noload-statistical-template.yml --extra-vars "start_nmeta=true start_nmeta2=false duration=10 results_dir=~/results/timeliness/statistical/ policy_name=main_policy_regression_statistical.yaml"
 
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
@@ -67,7 +67,7 @@
     - name: Pause to allow time for switch to connect to controller
       pause: seconds=6
       
-#*** Kill any Iperf on the Server and start Iperf server:
+#*** Record start Iperf server on server and record test parameters:
 - hosts: servers
 
   tasks:
@@ -76,13 +76,13 @@
       command: "pkill -f iperf"
       ignore_errors: True
 
-    - name: Start Iperf on Server
-      shell: "iperf -s -p {{ tcp_port }} -i 1"
+    - name: Start Iperf tcp-5555 on Server
+      shell: "iperf -s -p 5555 -i 1"
       async: 90000
       poll: 0
 
     - name: Record input variables to file for the record
-      copy: content="regression-identity-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} duration={{ duration }} results_dir={{ results_dir}} policy_name={{ policy_name }}" dest=/tmp/regression-identity-template.yml.parameters.txt
+      copy: content="tc-timely-noload-statistical-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} duration={{ duration }} results_dir={{ results_dir}} policy_name={{ policy_name }}" dest=/tmp/tc-timely-noload-statistical-template.yml.parameters.txt
 
 #*** Data Plane Auxiliary Engine, when doing nmeta2:
 - hosts: dpae
@@ -105,14 +105,9 @@
       command: "pgrep -f nmeta2dpae.py"
       when: start_nmeta2
 
-#*** Ensure PCs in clean state, generate results timestamp and run tests:
 - hosts: clients
 
   tasks:
-
-    - name: Pause to allow environment to settle and LLDP to be learnt
-      # Allow time for DPAE to connect to controller (if using) and LLDP to be learnt
-      pause: seconds=30
 
     - name: Kill any running Iperf processes
       command: "pkill -f iperf"
@@ -135,52 +130,35 @@
     - name: Create client results folder
       file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
 
-    - name: Run Iperf test from Client
-      shell: "iperf -c sv1 -p {{ tcp_port }} -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt"
-      
-    - name: Retrieve Iperf results
-      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
-
-#*** Dump and retrieve the Switch Flow Table for the record:
+#*** Set up monitoring on the switch for flow table modification timestamps:
 
 - hosts: switches
 
   tasks:
-
     - name: Create switch results folder
       file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
 
-    - name: Dump the Switch Flow Table
-      shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-pc1-flows.txt"
+    - debug: msg="Starting switch OpenFlow snooping..."
 
-    - name: Retrieve the Switch Flow Table
-      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-pc1-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+    - name: Set up switch OpenFlow snooping
+      shell: "sudo ovs-ofctl snoop br0 --timestamp -v --log-file={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt"
+      async: 90000
+      poll: 0
 
-    - name: Pause after pc1 test before starting lg1 test
-      pause: seconds=5
+#*** Run Iperf Test:
 
-#*** Ensure Load Generators in clean state and run tests:
-- hosts: load-generators
+- hosts: clients
 
   tasks:
 
-    - name: Kill any running Iperf processes on load generator
-      command: "pkill -f iperf"
-      ignore_errors: True
+    - name: send PING to server so that MAC table is current in both directions
+      shell: "ping -c 1 sv1"
+      
+    - name: Run Iperf tcp-5555 test from Client
+      shell: "iperf -c sv1 -p 5555 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt"
 
-    - debug: msg="Result folder will be {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout  }}"
-
-    - debug: msg="Creating local result folder..."
-
-    - name: Create load generator results folder
-      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout  }} state=directory
-      register: create_client_results_folder
-
-    - name: Run Iperf test from load generator
-      shell: "iperf -c sv1 -p {{ tcp_port }} -t {{ duration }} -y c > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout  }}/{{ inventory_hostname }}-iperf_result.txt"
-
-    - name: Retrieve Iperf results from load generator
-      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_result.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout  }}/ flat=yes
+    - name: Retrieve Iperf results tcp-5555
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
 #*** Dump and retrieve the Switch Flow Table for the record:
 
@@ -189,11 +167,13 @@
   tasks:
 
     - name: Dump the Switch Flow Table
-      shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-lg1-flows.txt"
+      shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt"
 
     - name: Retrieve the Switch Flow Table
-      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-lg1-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
+    - name: Retrieve the Switch OpenFlow Snooping File
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Retrieve file that holds parameters that test was called with:
 
@@ -202,7 +182,7 @@
   tasks:
 
     - name: Retrieve input variables file
-      fetch: src=/tmp/regression-identity-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src=/tmp/regression-static-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Retrieve copy of main policy file that was used:
 - hosts: controllers
@@ -217,16 +197,17 @@
       fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
-#*** Stop nmeta_dpae (when nmeta2):
+#*** Stop switch OpenFlow snooping:
 
-- hosts: dpae
+- hosts: switches
 
   tasks:
 
-    - name: Kill dpae nmeta_dpae process
-      command: "sudo pkill -f nmeta2dpae.py"
+    - debug: msg="Tidying up by killing unwanted async processes..."
+
+    - name: Kill switch OpenFlow snooping
+      command: "sudo pkill -f ovs-ofctl"
       ignore_errors: True
-      when: start_nmeta2
 
 #*** Finish by stopping any Ryu processes:
 
@@ -235,5 +216,5 @@
   tasks:
 
     - name: Kill controller ryu processes (nmeta or simple switch etc)
-      command: "pkill -f ryu-manager"
+      command: "sudo pkill -f ryu-manager"
       ignore_errors: True
