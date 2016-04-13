@@ -141,7 +141,8 @@
     - debug: msg="Starting switch OpenFlow snooping..."
 
     - name: Set up switch OpenFlow snooping
-      shell: "sudo ovs-ofctl snoop br0 --timestamp -v --log-file={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt"
+      #shell: "sudo ovs-ofctl snoop br0 --timestamp -v --log-file={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt"
+      shell: "nohup sudo ovs-ofctl snoop br0 --timestamp > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt 2>&1 &"
       async: 90000
       poll: 0
 
@@ -154,10 +155,16 @@
     - name: send PING to server so that MAC table is current in both directions
       shell: "ping -c 1 sv1"
       
-    - name: Run Iperf tcp-5555 test from Client
-      shell: "iperf -c sv1 -p 5555 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt"
+#    - name: Run Iperf tcp-5555 test from Client
+#      shell: "iperf -c sv1 -p 5555 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ #inventory_hostname }}-5555-iperf_result.txt"
 
-    - name: Retrieve Iperf results tcp-5555
+    - name: Run Iperf tcp-5555 test from Client
+      shell: "~/testtools/ipf/ipf.py {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_starttime.txt {{ duration }} {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt"
+
+    - name: Retrieve Iperf start time
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+      
+    - name: Retrieve Iperf results
       fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
 #*** Dump and retrieve the Switch Flow Table for the record:
