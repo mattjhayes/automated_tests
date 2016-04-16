@@ -25,10 +25,10 @@ import sys
 version = "0.1.0"
 
 #*** How many times to run the set of tests:
-repeats = 2
+repeats = 3
 
 #*** Types of tests to run:
-tests = ["nmeta-constrained-bw-iperf", "nmeta2-constrained-bw-iperf"]
+tests = ["nmeta2-constrained-bw-iperf", "nmeta2-constrained-bw-iperf-passive"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
@@ -75,6 +75,10 @@ for i in range(repeats):
             start_nmeta="false"
             start_nmeta2="true"
             policy_name="main_policy_regression_statistical.yaml"
+        elif test == "nmeta2-constrained-bw-iperf-passive":
+            start_nmeta="false"
+            start_nmeta2="true"
+            policy_name="main_policy_regression_statistical_passive.yaml"
         else:
             print "ERROR: unknown test type", test
             sys.exit()
