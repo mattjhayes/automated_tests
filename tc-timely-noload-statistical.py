@@ -25,7 +25,7 @@ import sys
 version = "0.1.0"
 
 #*** How many times to run the set of tests:
-repeats = 3
+repeats = 30
 
 #*** Types of tests to run:
 tests = ["nmeta2-constrained-bw-iperf", "nmeta2-constrained-bw-iperf-passive"]
