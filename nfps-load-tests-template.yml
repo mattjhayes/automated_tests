@@ -38,15 +38,15 @@
   tasks:
 
     - name: Kill controller mosp process
-      command: "pkill -f mosp"
+      command: "sudo pkill -f mosp"
       ignore_errors: True
 
     - name: Kill controller hort processes
-      command: "pkill -f hort"
+      command: "sudo pkill -f hort"
       ignore_errors: True
 
     - name: Kill controller ryu processes (nmeta or simple switch etc)
-      command: "pkill -f ryu-manager"
+      command: "sudo pkill -f ryu-manager"
       ignore_errors: True
 
 #*** Data Plane Auxiliary Engine, when doing nmeta2 - process clean-up:
@@ -55,7 +55,7 @@
   tasks:
 
     - name: Kill dpae mosp process
-      command: "pkill -f mosp"
+      command: "sudo pkill -f mosp"
       ignore_errors: True
       when: start_nmeta2
 
@@ -70,7 +70,7 @@
   tasks:
 
     - name: Kill client hort processes
-      command: "pkill -f hort"
+      command: "sudo pkill -f hort"
       ignore_errors: True
 
 #*** Load Generator process clean-up:
@@ -79,7 +79,7 @@
   tasks:
 
     - name: Kill load generator filt processes
-      command: "pkill -f filt"
+      command: "sudo pkill -f filt"
       ignore_errors: True
 
 #*** Switch process clean-up:
@@ -88,7 +88,7 @@
   tasks:
 
     - name: Kill switch mosp process
-      command: "pkill -f mosp"
+      command: "sudo pkill -f mosp"
       ignore_errors: True
 
 #*** Now start the main work of the playbook:
@@ -224,13 +224,13 @@
     - name: Retrieve client hort version text
       fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
-    - name: Run client hort cxn-keep-alive tests in background
-      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --elapsed-time --output-file {{ inventory_hostname }}-hort-cxn-keepalive.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+    - name: Run client hort cxn-close tests in background
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index_small.html --elapsed-time --no-keepalive --output-file {{ inventory_hostname }}-hort-cxn-close.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
       async: 90000
       poll: 0
 
-    - name: Run client hort cxn-close tests in background
-      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index.html --elapsed-time  --no-keepalive --output-file {{ inventory_hostname }}-hort-cxn-close.csv  --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+    - name: Run client hort cxn-keep-alive tests in background
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index_small.html --elapsed-time --output-file {{ inventory_hostname }}-hort-cxn-keepalive.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
       async: 90000
       poll: 0
 
@@ -384,7 +384,7 @@
       ignore_errors: True
 
     - name: Kill client hort processes
-      command: "pkill -f hort"
+      command: "sudo pkill -f hort"
       ignore_errors: True
 
     - name: Retrieve client hort connection keepalive results
@@ -400,15 +400,15 @@
   tasks:
 
     - name: Kill controller mosp process
-      command: "pkill -f mosp"
+      command: "sudo pkill -f mosp"
       ignore_errors: True
 
     - name: Kill controller hort processes
-      command: "pkill -f hort"
+      command: "sudo pkill -f hort"
       ignore_errors: True
 
     - name: Kill controller ryu processes (nmeta or simple switch etc)
-      command: "pkill -f ryu-manager"
+      command: "sudo pkill -f ryu-manager"
       ignore_errors: True
 
     - name: Retrieve controller mosp performance results
@@ -429,7 +429,7 @@
   tasks:
 
     - name: Kill dpae mosp process
-      command: "pkill -f mosp"
+      command: "sudo pkill -f mosp"
       ignore_errors: True
       when: start_nmeta2
 
@@ -449,7 +449,7 @@
   tasks:
 
     - name: Kill switch mosp process
-      command: "pkill -f mosp"
+      command: "sudo pkill -f mosp"
       ignore_errors: True
 
     - name: Retrieve switch mosp performance results
@@ -483,5 +483,5 @@
   tasks:
 
     - name: Kill controller ryu processes (nmeta or simple switch etc)
-      command: "pkill -f ryu-manager"
+      command: "sudo pkill -f ryu-manager"
       ignore_errors: True
