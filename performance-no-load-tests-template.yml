@@ -1,0 +1,283 @@
+---
+#- name: Performance (No Load) Test Template Playbook
+
+#*** Runs the statistical regression classifier
+
+#*** Version 0.1.0
+
+#*** Pass variables on the command line to determine the test type:
+#
+#*** Example nmeta performance test:
+#***   ansible-playbook ~/automated_tests/performance-no-load-tests-template.yml --extra-vars "start_nmeta=true start_nmeta2=false start_simple_switch=false nmeta2_mode=none results_dir=~/results/nfps-load-tests/nmeta2-combined/"
+#
+#*** Example nmeta2 performance test:
+#***   ansible-playbook ~/automated_tests/performance-no-load-tests-template.yml --extra-vars "start_nmeta=false start_nmeta2=true start_simple_switch=false nmeta2_mode=active results_dir=~/results/nfps-load-tests/nmeta2-combined/"
+#
+#*** Example nmeta2 performance test:
+#***   ansible-playbook ~/automated_tests/performance-no-load-tests-template.yml --extra-vars "start_nmeta=false start_nmeta2=true start_simple_switch=false nmeta2_mode=passive results_dir=~/results/nfps-load-tests/nmeta2-combined/"
+#
+#*** Example simple switch performance test:
+#***   ansible-playbook ~/automated_tests/performance-no-load-tests-template.yml --extra-vars "start_nmeta=false  start_nmeta2=false start_simple_switch=true nmeta2_mode=none results_dir=~/results/nfps-load-tests/nmeta-combined/"
+#
+#*** Example no SDN performance test:
+#***   ansible-playbook ~/automated_tests/performance-no-load-tests-template.yml --extra-vars "start_nmeta=false start_nmeta2=false start_simple_switch=false nmeta2_mode=none results_dir=~/results/nfps-load-tests/nmeta-combined/"
+
+#*** Remember to start w80 on server first... This script does not automatically start it...
+
+- hosts: servers
+
+  tasks:
+
+    - name: Doublecheck that webserver is running
+      command: "pgrep -f websvr.py"
+
+    - name: Record input variables to file for the record
+      copy: content="performance-no-load-tests-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} start_simple_switch={{ start_simple_switch }} nmeta2_mode={{ nmeta2_mode }} results_dir={{ results_dir }}" dest=/tmp/performance-no-load-tests-template.yml.parameters.txt
+
+#*** Start by ensuring no test processes are already running:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+#*** Data Plane Auxiliary Engine, when doing nmeta2 - process clean-up:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+#*** Client process clean-up:
+- hosts: clients
+
+  tasks:
+
+    - name: Kill client hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+#*** Now start the main work of the playbook:
+      
+#*** Start Ryu on controller (if required) with appropriate app
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Copy nmeta statistical main_policy file into place
+      command: "cp ~/nmeta/config/tests/regression/main_policy_regression_statistical.yaml ~/nmeta/config/main_policy.yaml"
+      when: start_nmeta
+
+    - name: Copy nmeta qos config file into place
+      command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
+      when: start_nmeta
+
+    - name: Copy nmeta standard config file into place
+      command: "cp ~/nmeta/config/tests/config_standard.yaml ~/nmeta/config/config.yaml"
+      when: start_nmeta
+
+    - name: Copy nmeta2 statistical active main_policy into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/regression/main_policy_regression_statistical.yaml ~/nmeta2/nmeta2/config/main_policy.yaml"
+      when: start_nmeta2 and nmeta2_mode == "active"
+
+    - name: Copy nmeta2 statistical passive main_policy into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/regression/main_policy_regression_statistical_passive.yaml ~/nmeta2/nmeta2/config/main_policy.yaml"
+      when: start_nmeta2 and nmeta2_mode == "passive"
+
+    - name: Copy standard config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/config_standard.yaml ~/nmeta2/nmeta2/config/config.yaml"
+      when: start_nmeta2
+
+    - name: Set PYTHONPATH environment variable
+      shell: "PYTHONPATH=."
+      args:
+        chdir: ~/ryu
+
+    - name: Run Ryu with nmeta (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+    - name: Run Ryu with nmeta2 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2/nmeta2.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Run Ryu with simple switch OFv1.3 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/ryu/ryu/app/simple_switch_13.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_simple_switch
+
+    - name: Doublecheck that simple switch is running
+      command: "pgrep -f simple_switch_13.py"
+      when: start_simple_switch
+
+    - name: Doublecheck that nmeta is running
+      command: "pgrep -f nmeta.py"
+      when: start_nmeta
+
+    - name: Doublecheck that nmeta2 is running
+      command: "pgrep -f nmeta2.py"
+      when: start_nmeta2
+
+#*** Data Plane Auxiliary Engine, when doing nmeta2:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Run nmeta2dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Pause to allow time for DPAE to connect to controller
+      pause: seconds=30
+      when: start_nmeta2
+
+    - name: Doublecheck that nmeta2dpae.py is running
+      command: "pgrep -f nmeta2dpae.py"
+      when: start_nmeta2
+
+#*** Run monitoring and tests on the client(s):
+- hosts: clients
+
+  tasks:
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - name: Create a text file of playbook YAML for the record
+      local_action: shell cp ~/automated_tests/performance-no-load-tests-template.yml {{ results_dir }}{{ results_timestamp.stdout }}/playbook.txt
+      run_once: true
+
+    - debug: msg="Starting client hort tests..."
+
+    - name: Create client hort version text file
+      shell: "python ~/testtools/hort/hort.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt"
+
+    - name: Retrieve client hort version text
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+# Run HORT tests
+
+    - name: Run client hort cxn-close tests
+      command: "python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index_small.html --elapsed-time --max-run-time 10 --no-keepalive --output-file {{ inventory_hostname }}-hort-cxn-close.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+
+# Run hping3 tests
+
+    - name: Run hping3 TCP latency tests
+      shell: "sudo hping3 -c 10 sv1 > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hping3_output.txt"
+
+#*** Dump and retrieve the Switch Flow Table for the record:
+
+- hosts: switches
+
+  tasks:
+
+    - name: Create switch results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - name: Dump the Switch Flow Table
+      shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt"
+
+    - name: Retrieve the Switch Flow Table
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Retrieve client results:
+
+- hosts: clients
+
+  tasks:
+
+    - name: Retrieve client hort connection close results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-cxn-close.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve client hping3 results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hping3_output.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+#*** Stop controller:
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+#*** Stop nmeta_dpae:
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae nmeta2dpae process
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+#*** Retrieve file that holds parameters that test was called with:
+
+- hosts: servers
+
+  tasks:
+
+    - name: Retrieve input variables file
+      fetch: src=/tmp/performance-no-load-tests-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Retrieve copy of main policy file that was used:
+- hosts: controllers
+
+  tasks:
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
+
+#*** Run post processing on data:
+
+    - name: run post processing on data
+      local_action: shell /home/bob/automated_tests/performance-no-load_data_post_processing.py {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/
+      when: start_nmeta2
