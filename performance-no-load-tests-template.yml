@@ -280,4 +280,3 @@
 
     - name: run post processing on data
       local_action: shell /home/bob/automated_tests/performance-no-load_data_post_processing.py {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/
-      when: start_nmeta2

@@ -76,6 +76,8 @@ def check_hping3_line(hping3_line):
     if hping3_match:
         print ("matched", hping3_match.groups()[0])
         result = hping3_match.groups()[0]
+        #*** Turn ms into seconds:
+        result = float(result) / 1000
         return result
     else:
         return 0
