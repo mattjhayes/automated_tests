@@ -1,0 +1,271 @@
+---
+#- name: CP Timeliness Tests of Control Plane MAC learning and Forwarding Rule Instantiation
+
+#*** Version 0.1.0
+
+#*** Pass variables on the command line to determine the test type:
+#
+#*** Example nmeta baseline:
+#***   ansible-playbook ~/automated_tests/cp-timely-load-template.yml --extra-vars "start_nmeta=true start_nmeta2=false results_dir=~/results/timeliness/statistical/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=10 flow_inc=10 incr_interval=100 proto=6 dport=12345 algorithm=make-good policy_name=main_policy_regression_statistical.yaml crafted_mac=00:00:00:00:12:34"
+
+#*** Start by ensuring nmeta is not running then start it if required:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+    - name: Copy nmeta regression main config file into place
+      command: "cp ~/nmeta/config/tests/regression/{{ policy_name }} ~/nmeta/config/main_policy.yaml"
+      when: start_nmeta
+
+    - name: Copy nmeta regression qos config file into place
+      command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
+      when: start_nmeta
+
+    - name: Copy nmeta standard config file into place
+      command: "cp ~/nmeta/config/tests/config_standard.yaml ~/nmeta/config/config.yaml"
+      when: start_nmeta
+
+    - name: Copy nmeta2 regression main config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/regression/{{ policy_name }} ~/nmeta2/nmeta2/config/main_policy.yaml"
+      when: start_nmeta2
+
+    - name: Copy nmeta2 standard config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/config_standard.yaml ~/nmeta2/nmeta2/config/config.yaml"
+      when: start_nmeta2
+
+    - name: Set PYTHONPATH environment variable
+      shell: "export PYTHONPATH=~/ryu"
+
+    - name: Run Ryu with nmeta (if required) on controller in the background
+      shell: "cd ~/ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+    - name: Run Ryu with nmeta2 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2/nmeta2.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Run Ryu with simple switch OFv1.3 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/ryu/ryu/app/simple_switch_13.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_simple_switch
+
+    - name: Doublecheck that simple switch is running
+      command: "pgrep -f simple_switch_13.py"
+      when: start_simple_switch
+
+    - name: Doublecheck that nmeta is running
+      command: "pgrep -f nmeta.py"
+      when: start_nmeta
+
+    - name: Doublecheck that nmeta2 is running
+      command: "pgrep -f nmeta2.py"
+      when: start_nmeta2
+
+    - name: Pause to allow time for switch to connect to controller
+      pause: seconds=6
+      
+#*** Record test parameters and retrieve:
+- hosts: servers
+
+  tasks:
+
+    - name: Record input variables to file for the record
+      copy: content="cp-timely-load-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} results_dir={{ results_dir }} policy_name={{ policy_name }} target_ip={{ target_ip }} target_mac={{ target_mac }} interface={{ interface }} initial_rate={{ initial_rate }} max_rate={{ max_rate }} flow_inc={{ flow_inc }} proto={{ proto }} dport={{ dport }} algorithm={{ algorithm }} crafted_mac={{ crafted_mac }}" dest=/tmp/cp-timely-load-template.yml.parameters.txt"
+
+    - name: Retrieve input variables file
+      fetch: src=/tmp/cp-timely-load-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Data Plane Auxiliary Engine, when doing nmeta2:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Run nmeta2-dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Doublecheck that nmeta2dpae.py is running
+      command: "pgrep -f nmeta2dpae.py"
+      when: start_nmeta2
+
+- hosts: clients
+
+  tasks:
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+
+#*** Set up monitoring on the switch for flow table modification timestamps:
+
+- hosts: switches
+
+  tasks:
+    - name: Create switch results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - debug: msg="Starting switch OpenFlow snooping..."
+
+    - name: Set up switch OpenFlow snooping
+      shell: "nohup sudo ovs-ofctl snoop br0 --timestamp > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt 2>&1 &"
+      async: 90000
+      poll: 0
+
+#*** Run Load Test as a background task:
+
+- hosts: load-generators
+
+  tasks:
+    - debug: msg="Starting Load Generator tasks..."
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}"
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - debug: msg="Creating and retrieving filt version text"
+
+    - name: Create filt version text file
+      shell: "sudo ~/testtools/filt/filt.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt"
+
+    - name: Retrieve filt version file
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+      #*** Regular PING important as Load Reflector does not return load packets
+      #***  so if MAC not known then packets to it will be flooded:
+    - name: PING the Load Reflector in background so that Controller sees packet-in of response and has in MAC table
+      shell: "nohup ping -c 1000 -i 5 10.1.0.7 &"
+      async: 90000
+      poll: 0
+
+    - debug: msg="Starting filt make-good test as background task..."
+
+    - name: Run the filt load test as a background task
+      shell: "sudo ~/testtools/filt/filt.py --target-ip {{ target_ip }}  --target-mac {{ target_mac }} --interface {{ interface }} --bypass-warn --max-flow-rate {{ max_rate }} --flow-rate-increase {{ flow_inc }} --increment-interval {{ incr_interval }} --protocol {{ proto }} --dport {{ dport }} --initial-flow-rate {{ initial_rate }} --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ algorithm }}.csv --algorithm {{ algorithm }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
+      async: 90000
+      poll: 0
+
+    - debug: msg="Wait for filt to ramp up"
+
+    - name: Pause to allow test to ramp up rate
+      pause: seconds=5
+
+#*** Send packet from a new source MAC on client pc, recording the time:
+
+- hosts: clients
+
+  tasks:
+
+    - name: Send a crafted packet from a MAC we haven't seen before
+      shell: "~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt 'sudo ~/testtools/crafted-pkt/craftedpkt.py {{ crafted_mac }} 00:00:00:00:00:02 0x800 eth1' /tmp/crafted_pkt_endtime.txt"
+
+    - name: Retrieve crafted packet start time
+      fetch: src=/tmp/crafted_pkt_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve crafted packet end time
+      fetch: src=/tmp/crafted_pkt_endtime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - debug: msg="Wait for period to ensure control plane learning captured"
+
+    - name: Pause to allow time control plane propogation of MAC learning
+      pause: seconds=15
+
+#*** Clean up tasks on load-generators:
+
+- hosts: load-generators
+
+  tasks:
+    - debug: msg="Clean-up Load Generator tasks..."
+
+    - name: Kill filt process
+      command: "sudo pkill -f filt"
+      ignore_errors: True
+
+    - name: Kill ping process
+      command: "sudo pkill -f ping"
+      ignore_errors: True
+
+#*** Dump and retrieve the Switch Flow Table for the record:
+
+- hosts: switches
+
+  tasks:
+
+    - name: Kill switch OpenFlow snooping
+      command: "sudo pkill -f ovs-ofctl"
+      ignore_errors: True
+
+    - name: Dump the Switch Flow Table
+      shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt"
+
+    - name: Retrieve the Switch Flow Table
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve the Switch OpenFlow Snooping File
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Retrieve copy of main policy file that was used:
+- hosts: controllers
+
+  tasks:
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
+#*** Stop any Ryu processes on Controller:
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+#*** Run post processing on data:
+
+    - name: run post processing on data
+      local_action: shell /home/bob/automated_tests/cp_timely_load_post_processing.py {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ {{ initial_rate }} {{ crafted_mac }}
+

@@ -141,7 +141,6 @@
     - debug: msg="Starting switch OpenFlow snooping..."
 
     - name: Set up switch OpenFlow snooping
-      #shell: "sudo ovs-ofctl snoop br0 --timestamp -v --log-file={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt"
       shell: "nohup sudo ovs-ofctl snoop br0 --timestamp > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt 2>&1 &"
       async: 90000
       poll: 0
