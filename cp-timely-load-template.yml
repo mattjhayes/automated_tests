@@ -266,6 +266,6 @@
 
 #*** Run post processing on data:
 
-    - name: run post processing on data
-      local_action: shell /home/bob/automated_tests/cp_timely_load_post_processing.py {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ {{ initial_rate }} {{ crafted_mac }}
+#    - name: run post processing on data
+#      local_action: shell /home/bob/automated_tests/cp_timely_load_post_processing.py {{ results_dir }}{{ #hostvars[groups['clients'][0]].results_timestamp.stdout }}/ {{ initial_rate }} {{ crafted_mac }}
 

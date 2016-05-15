@@ -57,7 +57,7 @@ dport = "12345"
 algorithm = "make-good"
 
 #*** Crafted MAC:
-crafted_mac=00:00:00:00:12:34
+crafted_mac = "00:00:00:00:12:34"
 
 #*** Ansible Playbook to use:
 playbook = os.path.join(home_dir, \
@@ -80,8 +80,8 @@ for test in tests:
     os.mkdir(test)
 
 #*** Initialise:
-start_nmeta="false"
-start_nmeta2="false"
+start_nmeta = "false"
+start_nmeta2 = "false"
 
 #*** Run tests:
 test_load_rate = test_load_initial_rate
@@ -89,38 +89,37 @@ for i in range(repeats):
     while test_load_rate <= test_load_max_rate:
         for test in tests:
             print "running test", test
-            test_dir=os.path.join(test_basedir, test)
+            test_dir = os.path.join(test_basedir, test)
             if test == "nmeta":
-                start_nmeta="true"
-                start_nmeta2="false"
-                nmeta2_mode="none"
-                start_simple_switch="false"
-                policy_name="main_policy_regression_statistical.yaml"
+                start_nmeta = "true"
+                start_nmeta2 = "false"
+                nmeta2_mode = "none"
+                start_simple_switch = "false"
+                policy_name = "main_policy_regression_statistical.yaml"
             elif test == "nmeta2-active":
-                start_nmeta="false"
-                start_nmeta2="true"
-                nmeta2_mode="active"
-                start_simple_switch="false"
-                policy_name="main_policy_regression_statistical.yaml"
+                start_nmeta = "false"
+                start_nmeta2 = "true"
+                nmeta2_mode = "active"
+                start_simple_switch = "false"
+                policy_name = "main_policy_regression_statistical.yaml"
             elif test == "nmeta2-passive":
-                start_nmeta="false"
-                start_nmeta2="true"
-                nmeta2_mode="passive"
-                start_simple_switch="false"
-                policy_name="main_policy_regression_statistical_passive.yaml"
+                start_nmeta = "false"
+                start_nmeta2 = "true"
+                nmeta2_mode = "passive"
+                start_simple_switch = "false"
+                policy_name = "main_policy_regression_statistical_passive.yaml"
             elif test == "simpleswitch":
-                start_nmeta="false"
-                start_nmeta2="false"
-                nmeta2_mode="none"
-                start_simple_switch="true"
-                policy_name="none"
+                start_nmeta = "false"
+                start_nmeta2 = "false"
+                nmeta2_mode = "none"
+                start_simple_switch = "true"
+                policy_name = " none"
             else:
                 print "ERROR: unknown test type", test
                 sys.exit()
             playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
             playbook_cmd += "\"start_nmeta=" + start_nmeta
             playbook_cmd += " start_nmeta2=" + start_nmeta2
-            playbook_cmd += " duration=" + duration
             playbook_cmd += " results_dir=" + test_dir + "/"
             playbook_cmd += " target_ip=" + target_ip
             playbook_cmd += " target_mac=" + target_mac
@@ -136,11 +135,10 @@ for i in range(repeats):
             playbook_cmd += " crafted_mac=" + crafted_mac
             playbook_cmd += "\""
             print "playbook_cmd is", playbook_cmd
-        
+
             print "running Ansible playbook..."
             os.system(playbook_cmd)
             print "Sleeping... zzzz"
             time.sleep(30)
 
         test_load_rate = test_load_rate + test_load_rate_increment
-        
