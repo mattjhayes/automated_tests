@@ -6,7 +6,7 @@
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook ~/automated_tests/cp-timely-load-template.yml --extra-vars "start_nmeta=true start_nmeta2=false results_dir=~/results/timeliness/statistical/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=10 flow_inc=10 incr_interval=100 proto=6 dport=12345 algorithm=make-good policy_name=main_policy_regression_statistical.yaml crafted_mac=00:00:00:00:12:34"
+#***   ansible-playbook ~/automated_tests/cp-timely-load-template.yml --extra-vars "start_nmeta=true start_nmeta2=false start_simple_switch=false results_dir=~/results/timeliness/statistical/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=10 flow_inc=10 incr_interval=100 proto=6 dport=12345 algorithm=make-good policy_name=main_policy_regression_statistical.yaml crafted_mac=00:00:00:00:12:34"
 
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
@@ -78,14 +78,37 @@
 
     - name: Pause to allow time for switch to connect to controller
       pause: seconds=6
-      
+
+#*** Create a timestamp variable for the test:
+
+- hosts: clients
+
+  tasks:
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+
 #*** Record test parameters and retrieve:
 - hosts: servers
 
   tasks:
 
     - name: Record input variables to file for the record
-      copy: content="cp-timely-load-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} results_dir={{ results_dir }} policy_name={{ policy_name }} target_ip={{ target_ip }} target_mac={{ target_mac }} interface={{ interface }} initial_rate={{ initial_rate }} max_rate={{ max_rate }} flow_inc={{ flow_inc }} proto={{ proto }} dport={{ dport }} algorithm={{ algorithm }} crafted_mac={{ crafted_mac }}" dest=/tmp/cp-timely-load-template.yml.parameters.txt"
+      copy: content="cp-timely-load-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} start_simple_switch={{ start_simple_switch }} results_dir={{ results_dir }} policy_name={{ policy_name }} target_ip={{ target_ip }} target_mac={{ target_mac }} interface={{ interface }} initial_rate={{ initial_rate }} max_rate={{ max_rate }} flow_inc={{ flow_inc }} proto={{ proto }} dport={{ dport }} algorithm={{ algorithm }} crafted_mac={{ crafted_mac }}" dest=/tmp/cp-timely-load-template.yml.parameters.txt
 
     - name: Retrieve input variables file
       fetch: src=/tmp/cp-timely-load-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
@@ -110,27 +133,6 @@
     - name: Doublecheck that nmeta2dpae.py is running
       command: "pgrep -f nmeta2dpae.py"
       when: start_nmeta2
-
-- hosts: clients
-
-  tasks:
-
-    - name: Generate global results timestamp variable
-      local_action: shell date +%Y%m%d%H%M%S
-      register: results_timestamp
-      run_once: true
-
-    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
-
-    - debug: msg="Creating local and remote result folders..."
-
-    - name: Create local results folder
-      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
-      register: create_local_results_folder
-      run_once: true
-
-    - name: Create client results folder
-      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
 
 #*** Set up monitoring on the switch for flow table modification timestamps:
 

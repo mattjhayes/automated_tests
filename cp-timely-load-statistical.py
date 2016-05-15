@@ -120,13 +120,14 @@ for i in range(repeats):
             playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
             playbook_cmd += "\"start_nmeta=" + start_nmeta
             playbook_cmd += " start_nmeta2=" + start_nmeta2
+            playbook_cmd += " start_simple_switch=" + start_simple_switch
             playbook_cmd += " results_dir=" + test_dir + "/"
             playbook_cmd += " target_ip=" + target_ip
             playbook_cmd += " target_mac=" + target_mac
             playbook_cmd += " interface=" + interface
-            playbook_cmd += " initial_rate=" + test_load_rate
-            playbook_cmd += " max_rate=" + test_load_rate
-            playbook_cmd += " flow_inc=" + test_load_rate_increment
+            playbook_cmd += " initial_rate=" + str(test_load_rate)
+            playbook_cmd += " max_rate=" + str(test_load_rate)
+            playbook_cmd += " flow_inc=" + str(test_load_rate_increment)
             playbook_cmd += " incr_interval=" + incr_interval
             playbook_cmd += " proto=" + proto
             playbook_cmd += " dport=" + dport
