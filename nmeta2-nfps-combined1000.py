@@ -25,7 +25,7 @@ import sys
 version = "0.2.0"
 
 #*** How many times to run the set of tests:
-repeats = 5
+repeats = 10
 
 #*** Types of tests to run:
 tests = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"]
@@ -121,5 +121,5 @@ for i in range(repeats):
         print "running Ansible playbook..."
         os.system(playbook_cmd)
         print "Sleeping... zzzz"
-        time.sleep(60)
+        time.sleep(30)
         

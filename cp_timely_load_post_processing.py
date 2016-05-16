@@ -18,12 +18,11 @@ Post-Processing for CP timely experiements prior to
 ingestion by R
 
 Pass it full path to directory that contains test result
-files to post-process, as well as the load level
+files to post-process, as well as the target load level and crafted MAC
 
 Example:
 
-./cp_timely_load_post_processing.py ~/results/timeliness/statistical \
-     /20160414211230/nmeta2-constrained-bw-iperf/20160414211648 50
+./cp_timely_load_post_processing.py simpleswitch ~/results/timeliness/controlplane/20160516202631/simpleswitch/20160516203449 50 00:00:00:00:12:34
 
 This script is called by the Ansible YAML template, so does not need to
 be run manually.
@@ -63,13 +62,14 @@ FT_FWD_PRIORITY = 1
 UTC = pytz.utc
 LOCAL_TZ = get_localzone()
 
-#*** Must have 4 parameters passed to it (first parameter is script)
-assert len(sys.argv) == 4
+#*** Must have 5 parameters passed to it (first parameter is script)
+assert len(sys.argv) == 5
 
 #*** Get parameters from command line
-TEST_DIR = sys.argv[1]
-LOAD_RATE = sys.argv[2]
-CRAFTED_MAC = sys.argv[3]
+TEST_TYPE = sys.argv[1]
+TEST_DIR = sys.argv[2]
+LOAD_RATE = sys.argv[3]
+CRAFTED_MAC = sys.argv[4]
 
 def main():
     """
@@ -82,23 +82,17 @@ def main():
     forwarding_rule_time = get_forwarding_rule_time()
 
     #*** Calculate the delta between Iperf start and traffic treatment:
-    if iperf_starttime and treatment_time:
-        delta = treatment_time - iperf_starttime
+    if crafted_pkt_send_time and forwarding_rule_time:
+        delta = forwarding_rule_time - crafted_pkt_send_time
         #*** Write result to file:
         write_result(FILENAME_TT, delta.total_seconds())
     else:
         #*** Uh-oh, something must have gone wrong... Lets write
         #*** something to file for triage later:
-        write_error("Error: iperf_starttime=" + str(iperf_starttime) + \
-                    " treatment_time=" + str(treatment_time))
-
-    #*** Get the number of packets sent to the DPAE:
-    packets_to_dpae = get_packets_to_dpae()
-    if packets_to_dpae:
-        #*** Write to file:
-        write_result(FILENAME_DPAE_PKTS, packets_to_dpae)
-    else:
-        write_error("Error: packets_to_dpae is zero")
+        write_error("Error: crafted_pkt_send_time=" + \
+                    str(crafted_pkt_send_time) + \
+                    " forwarding_rule_time=" + \
+                    str(forwarding_rule_time))
 
 def get_crafted_pkt_send_time():
     """

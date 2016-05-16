@@ -121,6 +121,7 @@ for i in range(repeats):
             playbook_cmd += "\"start_nmeta=" + start_nmeta
             playbook_cmd += " start_nmeta2=" + start_nmeta2
             playbook_cmd += " start_simple_switch=" + start_simple_switch
+            playbook_cmd += " test_type=" + test
             playbook_cmd += " results_dir=" + test_dir + "/"
             playbook_cmd += " target_ip=" + target_ip
             playbook_cmd += " target_mac=" + target_mac
@@ -142,4 +143,4 @@ for i in range(repeats):
             print "Sleeping... zzzz"
             time.sleep(30)
 
-        test_load_rate = test_load_rate + test_load_rate_increment
+    test_load_rate = test_load_rate + test_load_rate_increment
