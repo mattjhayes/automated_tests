@@ -41,6 +41,14 @@ from tzlocal import get_localzone
 #*** Regular Expressions import:
 import re
 
+#*** Get parameters from command line
+#*** Must have 5 parameters passed to it (first parameter is script)
+assert len(sys.argv) == 5
+TEST_TYPE = sys.argv[1]
+TEST_DIR = sys.argv[2]
+LOAD_RATE = sys.argv[3]
+CRAFTED_MAC = sys.argv[4]
+
 #*** Constants for filenames to process:
 FILENAME_CRAFTED_PKT_SEND = 'crafted_pkt_starttime.txt'
 FILENAME_FLOWUPDATES = 'sw1.example.com-OF-snooping.txt'
@@ -62,14 +70,8 @@ FT_FWD_PRIORITY = 1
 UTC = pytz.utc
 LOCAL_TZ = get_localzone()
 
-#*** Must have 5 parameters passed to it (first parameter is script)
-assert len(sys.argv) == 5
 
-#*** Get parameters from command line
-TEST_TYPE = sys.argv[1]
-TEST_DIR = sys.argv[2]
-LOAD_RATE = sys.argv[3]
-CRAFTED_MAC = sys.argv[4]
+
 
 def main():
     """

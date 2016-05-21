@@ -219,15 +219,13 @@
 
   tasks:
     - name: Send a crafted packet from a MAC we haven't seen before
-      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/{{ inventory_hostname }}-crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py  {{ crafted_mac }} 08:00:27:c8:db:91 0x800 eth1' /tmp/{{ inventory_hostname }}-crafted_pkt_endtime.txt"
+      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py  {{ crafted_mac }} 08:00:27:c8:db:91 0x800 eth1' /tmp/crafted_pkt_endtime.txt"
 
     - name: Retrieve crafted packet start time
-      fetch: src=/tmp/{{ inventory_hostname }}-crafted_pkt_starttime.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-      when: not start_simple_switch
+      fetch: src=/tmp/crafted_pkt_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
     - name: Retrieve crafted packet end time
-      fetch: src=/tmp/{{ inventory_hostname }}-crafted_pkt_endtime.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-      when: not start_simple_switch
+      fetch: src=/tmp/crafted_pkt_endtime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
 #*** Send packet to crafted source MAC on client pc from server, recording the time for
 #*** simpleswitch which only learns MACs when dest is not flood:
@@ -322,7 +320,9 @@
 
 #*** Run post processing on data:
 
-#    - name: run post processing on data
-#      local_action: shell /home/bob/automated_tests/cp_timely_load_post_processing.py {{ test_type }} {{ results_dir }} {{ #hostvars[groups['clients'][0]].results_timestamp.stdout }}/ {{ initial_rate }} {{ crafted_mac }} 
+    - name: run post processing on data
+      local_action: shell /home/bob/automated_tests/cp_timely_load_post_processing.py {{ test_type }} {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ {{ initial_rate }} {{ crafted_mac }} 
 
-    - debug: msg="Result main folder is {{  hostvars[groups['clients'][0]].results_timestamp.stdout }}"
+    - debug: msg="Result main folder is {{ hostvars[groups['clients'][0]].results_timestamp.stdout }}"
+
+    - debug: msg="Full folder is {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}"
