@@ -143,4 +143,4 @@ for i in range(repeats):
             print "Sleeping... zzzz"
             time.sleep(30)
 
-    test_load_rate = test_load_rate + test_load_rate_increment
+        test_load_rate = test_load_rate + test_load_rate_increment

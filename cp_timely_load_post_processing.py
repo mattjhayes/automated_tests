@@ -86,8 +86,10 @@ def main():
     #*** Calculate the delta between Iperf start and traffic treatment:
     if crafted_pkt_send_time and forwarding_rule_time:
         delta = forwarding_rule_time - crafted_pkt_send_time
+        result = TEST_TYPE + ',' + str(LOAD_RATE) + ',' \
+                                            + str(delta.total_seconds())
         #*** Write result to file:
-        write_result(FILENAME_TT, delta.total_seconds())
+        write_result(FILENAME_TT, result)
     else:
         #*** Uh-oh, something must have gone wrong... Lets write
         #*** something to file for triage later:
@@ -151,9 +153,21 @@ def check_snoop_line(snoop_line, timezone):
                 snoop_line)
     if of_snoop_match:
         #*** Now see if line contains pattern for a treatment:
-        treatment_match = \
+        if TEST_TYPE == 'nmeta2-active' or TEST_TYPE == 'nmeta2-passive':
+            treatment_match = \
+                re.search(r"table\:5\spriority\=1\,dl_dst\=00\:00\:00\:00\:12\:34",
+                snoop_line)
+        elif TEST_TYPE == 'nmeta':
+            treatment_match = \
                 re.search(r"actions\=set_queue\:1\,goto\_table\:5",
                 snoop_line)
+        elif TEST_TYPE == 'simpleswitch':
+            treatment_match = \
+                re.search(r"actions\=set_queue\:1\,goto\_table\:5",
+                snoop_line)
+        else:
+            print("Error, unknown test type ", TEST_TYPE)
+            return 0
         if treatment_match:
             print("matched treatment on line ", snoop_line)
             tt_datetime = of_snoop_match.group(1)
