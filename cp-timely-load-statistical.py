@@ -34,7 +34,8 @@ version = "0.1.0"
 repeats = 3
 
 #*** Types of tests to run:
-tests = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nmeta"]
+#***  Note: don't do nmeta as it doesn't do MAC learning in switch
+tests = ["nmeta2-active", "nmeta2-passive", "simpleswitch"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")

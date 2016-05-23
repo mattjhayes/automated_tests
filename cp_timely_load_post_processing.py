@@ -157,13 +157,9 @@ def check_snoop_line(snoop_line, timezone):
             treatment_match = \
                 re.search(r"table\:5\spriority\=1\,dl_dst\=00\:00\:00\:00\:12\:34",
                 snoop_line)
-        elif TEST_TYPE == 'nmeta':
-            treatment_match = \
-                re.search(r"actions\=set_queue\:1\,goto\_table\:5",
-                snoop_line)
         elif TEST_TYPE == 'simpleswitch':
             treatment_match = \
-                re.search(r"actions\=set_queue\:1\,goto\_table\:5",
+                re.search(r"dl_dst\=00\:00\:00\:00\:12\:34\sout\_port\:0\sactions\=\output\:1",
                 snoop_line)
         else:
             print("Error, unknown test type ", TEST_TYPE)
