@@ -122,6 +122,10 @@
     - name: Retrieve input variables file
       fetch: src=/tmp/cp-timely-load-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
+    #*** Add static ARP to server back to IP with crafted MAC:
+    - name: Run nmeta2-dpae (if required) on dpae in the background
+      shell: "sudo arp -s 10.1.2.3 {{ crafted_mac }}"
+
 #*** Data Plane Auxiliary Engine, when doing nmeta2:
 - hosts: dpae
 
@@ -175,11 +179,26 @@
       async: 90000
       poll: 0
 
-#*** Run Load Test as a background task:
+#*** Run tcpdump and Load Test as a background tasks:
 
 - hosts: load-generators
 
   tasks:
+
+    - name: Set interface to be promiscuous so we can capture packets to crafted MAC
+      shell: "sudo ifconfig eth1 promisc"
+
+    - debug: msg="Starting tcpdump task..."
+
+    - name: Remove any old TCP dump file
+      shell: "sudo rm /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt"
+      ignore_errors: True
+
+    - name: TCP dump to capture crafted packet returns to see when flooding stops because MAC learnt
+      shell: "sudo tcpdump -ne -i eth1 'ether dst host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt"
+      async: 90000
+      poll: 0
+
     - debug: msg="Starting Load Generator tasks..."
 
     - name: Create client results folder
@@ -213,39 +232,19 @@
     - name: Pause to allow test to ramp up rate
       pause: seconds=5
 
-#*** Send packet from crafted source MAC on client pc:
+#*** Send TCP SYN packets from crafted source MAC on client PC to server:
 
 - hosts: clients
 
   tasks:
     - name: Send a crafted packet from a MAC we haven't seen before
-      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py  {{ crafted_mac }} 08:00:27:c8:db:91 0x800 eth1' /tmp/crafted_pkt_endtime.txt"
+      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py  {{ crafted_mac }} 00:00:00:00:12:34 08:00:27:c8:db:91 0x800 10.1.2.3 10.1.0.2 1234 5678 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
 
     - name: Retrieve crafted packet start time
       fetch: src=/tmp/crafted_pkt_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
     - name: Retrieve crafted packet end time
       fetch: src=/tmp/crafted_pkt_endtime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
-
-#*** Send packet to crafted source MAC on client pc from server, recording the time for
-#*** simpleswitch which only learns MACs when dest is not flood:
-
-- hosts: servers
-
-  tasks:
-
-    #*** Dest MAC is server 1 MAC address:
-    - name: Send a crafted packet from a MAC we haven't seen before
-      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/{{ inventory_hostname }}-crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py  08:00:27:c8:db:91 {{ crafted_mac }} 0x800 eth1' /tmp/{{ inventory_hostname }}-crafted_pkt_endtime.txt"
-      when: start_simple_switch
-
-    - name: Retrieve crafted packet start time
-      fetch: src=/tmp/{{ inventory_hostname }}-crafted_pkt_starttime.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-      when: start_simple_switch
-
-    - name: Retrieve crafted packet end time
-      fetch: src=/tmp/{{ inventory_hostname }}-crafted_pkt_endtime.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-      when: start_simple_switch
 
     - debug: msg="Wait for period to ensure control plane learning captured"
 
@@ -285,8 +284,16 @@
 - hosts: load-generators
 
   tasks:
+
+    - name: Retrieve flooding of crafted packet tcpdump output file
+      fetch: src=/tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
     - debug: msg="Clean-up Load Generator tasks..."
 
+    - name: Kill filt process
+      command: "sudo pkill -f tcpdump"
+      ignore_errors: True
+      
     - name: Kill filt process
       command: "sudo pkill -f filt"
       ignore_errors: True
