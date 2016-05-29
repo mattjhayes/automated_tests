@@ -1,0 +1,266 @@
+---
+#- name: NFPS (New Flows Per Second) Load Test Warm-up Template Playbook
+
+#*** Use this to put a bit of stress on environment without recording
+#*** results so that Linux OS is ready for the tests and don't get
+#*** too much variability in first test result.
+
+#*** Version 0.2.0
+
+#*** Remember to start w80 on server first... This script does not automatically start it...
+
+#*** Example nmeta nfps load test:
+#***   ansible-playbook ~/automated_tests/nfps-load-tests-template.yml --extra-vars "target_ip=10.1.0.7 target_mac=08:00:27:40:e4:4c interface=eth1 initial_rate=600 max_rate=1000 flow_inc=10 incr_interval=1 proto=6 dport=12345 algorithm=make-good"
+
+- hosts: servers
+
+  tasks:
+
+    - name: Doublecheck that webserver is running
+      command: "pgrep -f websvr.py"
+
+
+#*** Start by ensuring no test processes are already running:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill controller hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+#*** Data Plane Auxiliary Engine, process clean-up:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+
+#*** Client process clean-up:
+- hosts: clients
+
+  tasks:
+
+    - name: Kill client hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+#*** Load Generator process clean-up:
+- hosts: load-generators
+
+  tasks:
+
+    - name: Kill load generator filt processes
+      command: "sudo pkill -f filt"
+      ignore_errors: True
+
+#*** Switch process clean-up:
+- hosts: switches
+
+  tasks:
+
+    - name: Kill switch mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+#*** Now start the main work of the playbook:
+      
+#*** Start Ryu on controller with nmeta2
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Copy NFPS main config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/nfps_load/main_policy_nfps_load.yaml ~/nmeta2/nmeta2/config/main_policy.yaml"
+
+    - name: Copy standard config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/config_standard.yaml ~/nmeta2/nmeta2/config/config.yaml"
+
+    - name: Set PYTHONPATH environment variable
+      shell: "PYTHONPATH=."
+      args:
+        chdir: ~/ryu
+
+    - name: Run Ryu with nmeta2 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2/nmeta2.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+
+    - name: Doublecheck that nmeta2 is running
+      command: "pgrep -f nmeta2.py"
+
+#*** Data Plane Auxiliary Engine:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+
+    - name: Run nmeta2dpae on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+
+    - name: Pause to allow time for DPAE to connect to controller
+      pause: seconds=30
+
+    - name: Doublecheck that nmeta2dpae.py is running
+      command: "pgrep -f nmeta2dpae.py"
+
+#*** Run monitoring and tests on the client(s):
+- hosts: clients
+
+  tasks:
+
+    - debug: msg="Starting client hort tests..."
+
+    - name: Run client hort cxn-close tests in background
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index_small.html --elapsed-time --no-keepalive --output-file warmup-hort-cxn-close.csv --output-path /tmp/ &"
+      async: 90000
+      poll: 0
+
+    - name: Run client hort cxn-keep-alive tests in background
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index_small.html --elapsed-time --output-file warmup-hort-cxn-keepalive.csv --output-path /tmp/ &"
+      async: 90000
+      poll: 0
+
+#*** Run OS monitoring on the DPAE(es)
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Run dpae mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file warmup-mosp.csv --output-path /tmp/ }}/ &"
+      async: 90000
+      poll: 0
+
+#*** Run OS monitoring on the switch(es)
+
+- hosts: switches
+
+  tasks:
+
+    - debug: msg="Starting switch mosp performance monitoring..."
+
+    - name: Run switch mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file warmup-mosp.csv --output-path /tmp/ }}/ &"
+      async: 90000
+      poll: 0
+
+#*** Run monitoring on the controller
+
+- hosts: controllers
+
+  tasks:
+
+    - debug: msg="Starting controller mosp performance monitoring..."
+
+    - name: Run controller mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file warmup-mosp.csv --output-path /tmp/ &"
+      async: 90000
+      poll: 0
+
+#*** Fire up the load generator...
+
+- hosts: load-generators
+
+  tasks:
+    - debug: msg="Starting Load Generator tasks..."
+
+      #*** Regular PING important as Load Reflector does not return load packets
+      #***  so if MAC not known then packets to it will be flooded:
+    - name: PING the Load Reflector in background so that Controller sees packet-in of response and has in MAC table
+      shell: "nohup ping -c 1000 -i 5 {{ target_ip }} &"
+      async: 90000
+      poll: 0
+
+    - debug: msg="Starting filt make-good tests..."
+
+    - name: Run the filt load tests
+      shell: "sudo ~/testtools/filt/filt.py --target-ip {{ target_ip }}  --target-mac {{ target_mac }} --interface {{ interface }} --bypass-warn --max-flow-rate {{ max_rate }} --flow-rate-increase {{ flow_inc }} --increment-interval {{ incr_interval }} --protocol {{ proto }} --dport {{ dport }} --initial-flow-rate {{ initial_rate }} --elapsed-time --output-file warmup-filt.csv --algorithm {{ algorithm }} --output-path /tmp/"
+
+#*** Stop hort on clients:
+
+- hosts: clients
+
+  tasks:
+
+    - name: Check client hort processes
+      command: "pgrep -f hort"
+      ignore_errors: True
+
+    - name: Kill client hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+#*** Stop mosp and hort on controller:
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill controller hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+#*** Stop nmeta_dpae and mosp on DPAE(es):
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill dpae nmeta2dpae process
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+
+#*** Stop mosp switch(es):
+
+- hosts: switches
+
+  tasks:
+
+    - name: Kill switch mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+#*** Finish by stopping any Ryu processes:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True

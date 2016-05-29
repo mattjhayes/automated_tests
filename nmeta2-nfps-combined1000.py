@@ -25,7 +25,7 @@ import sys
 version = "0.2.0"
 
 #*** How many times to run the set of tests:
-repeats = 10
+repeats = 12
 
 #*** Types of tests to run:
 tests = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"]
@@ -46,9 +46,17 @@ proto = "6"
 dport = "12345"
 algorithm = "make-good"
 
+#*** Parameters for the warmup:
+initial_rate_warmup = "500"
+max_rate_warmup = "1000"
+flow_inc_warmup = "10"
+incr_interval_warmup = "1"
+
 #*** Ansible Playbook to use:
 playbook = os.path.join(home_dir, \
             "automated_tests/nfps-load-tests-template.yml")
+playbook_warmup = os.path.join(home_dir, \
+            "automated_tests/nfps-load-tests-template-warmup.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -66,36 +74,56 @@ os.chdir(test_basedir)
 for test in tests:
     os.mkdir(test)
 
+#*** Run warmup that ensures Linux OS is ready for the test:
+playbook_cmd = "ansible-playbook " + playbook_warmup + " --extra-vars "
+playbook_cmd += "\"target_ip=" + target_ip
+playbook_cmd += " target_mac=" + target_mac
+playbook_cmd += " interface=" + interface
+playbook_cmd += " initial_rate=" + initial_rate_warmup
+playbook_cmd += " max_rate=" + max_rate_warmup
+playbook_cmd += " flow_inc=" + flow_inc_warmup
+playbook_cmd += " incr_interval=" + incr_interval_warmup
+playbook_cmd += " proto=" + proto
+playbook_cmd += " dport=" + dport
+playbook_cmd += " algorithm=" + algorithm
+playbook_cmd += "\""
+print "warmup playbook_cmd is", playbook_cmd
+        
+print "running warmup Ansible playbook..."
+os.system(playbook_cmd)
+print "Sleeping before starting tests... zzzz"
+time.sleep(30)
+
 #*** Run tests
 for i in range(repeats):
     for test in tests:
         print "running test", test
         test_dir=os.path.join(test_basedir, test)
         if test == "nmeta":
-            start_nmeta="true"
-            start_nmeta2="false"
-            nmeta2_mode="none"
-            start_simple_switch="false"
+            start_nmeta = "true"
+            start_nmeta2 = "false"
+            nmeta2_mode = "none"
+            start_simple_switch = "false"
         elif test == "nmeta2-active":
-            start_nmeta="false"
-            start_nmeta2="true"
-            nmeta2_mode="active"
-            start_simple_switch="false"
+            start_nmeta = "false"
+            start_nmeta2 = "true"
+            nmeta2_mode = "active"
+            start_simple_switch = "false"
         elif test == "nmeta2-passive":
-            start_nmeta="false"
-            start_nmeta2="true"
-            nmeta2_mode="passive"
-            start_simple_switch="false"
+            start_nmeta = "false"
+            start_nmeta2 = "true"
+            nmeta2_mode = "passive"
+            start_simple_switch = "false"
         elif test == "simpleswitch":
-            start_nmeta="false"
-            start_nmeta2="false"
-            nmeta2_mode="none"
-            start_simple_switch="true"
+            start_nmeta = "false"
+            start_nmeta2 = "false"
+            nmeta2_mode = "none"
+            start_simple_switch = "true"
         elif test == "nosdn":
-            start_nmeta="false"
-            start_nmeta2="false"
-            nmeta2_mode="none"
-            start_simple_switch="false"
+            start_nmeta = "false"
+            start_nmeta2 = "false"
+            nmeta2_mode = "none"
+            start_simple_switch = "false"
         else:
             print "ERROR: unknown test type", test
             sys.exit()

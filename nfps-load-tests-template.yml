@@ -182,7 +182,7 @@
       when: start_nmeta2
 
     - name: Pause to allow time for DPAE to connect to controller
-      pause: seconds=30
+      pause: seconds=15
       when: start_nmeta2
 
     - name: Doublecheck that nmeta2dpae.py is running
@@ -338,6 +338,9 @@
 
     - name: Retrieve filt version file
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Pause to allow time for CPU on guests to settle down post monitoring start
+      pause: seconds=5
 
       #*** Regular PING important as Load Reflector does not return load packets
       #***  so if MAC not known then packets to it will be flooded:

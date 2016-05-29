@@ -195,7 +195,8 @@
       ignore_errors: True
 
     - name: TCP dump to capture crafted packet returns to see when flooding stops because MAC learnt
-      shell: "sudo tcpdump -ne -i eth1 'ether dst host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt"
+      #shell: "nohup sudo tcpdump -ne -i eth1 'ether dst host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
+      shell: "nohup sudo tcpdump -ne -i eth1 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
       async: 90000
       poll: 0
 
@@ -238,7 +239,7 @@
 
   tasks:
     - name: Send a crafted packet from a MAC we haven't seen before
-      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py  {{ crafted_mac }} 00:00:00:00:12:34 08:00:27:c8:db:91 0x800 10.1.2.3 10.1.0.2 1234 5678 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
+      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py {{ crafted_mac }} 08:00:27:c8:db:91 0x800 10.1.2.3 10.1.0.2 1234 5678 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
 
     - name: Retrieve crafted packet start time
       fetch: src=/tmp/crafted_pkt_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
