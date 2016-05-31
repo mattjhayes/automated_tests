@@ -185,18 +185,25 @@
 
   tasks:
 
+    #*** Capture packets on load generator:
+
+    - name: Kill any old packet capture process
+      command: "sudo pkill -f pcmd.py"
+      ignore_errors: True
+
     - name: Set interface to be promiscuous so we can capture packets to crafted MAC
       shell: "sudo ifconfig eth1 promisc"
 
-    - debug: msg="Starting tcpdump task..."
+    - debug: msg="Starting load-generator tcpdump task..."
 
     - name: Remove any old TCP dump file
       shell: "sudo rm /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt"
       ignore_errors: True
 
     - name: TCP dump to capture crafted packet returns to see when flooding stops because MAC learnt
-      #shell: "nohup sudo tcpdump -ne -i eth1 'ether dst host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
-      shell: "nohup sudo tcpdump -ne -i eth1 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
+      #shell: "nohup sudo tcpdump -nett -i eth1 'ether host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
+      #shell: "nohup sudo tcpdump -nett -i eth1 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
+      shell: "sudo ~/testtools/misc/pcmd.py"
       async: 90000
       poll: 0
 
@@ -301,6 +308,10 @@
 
     - name: Kill ping process
       command: "sudo pkill -f ping"
+      ignore_errors: True
+
+    - name: Kill packet capture process
+      command: "sudo pkill -f pcmd.py"
       ignore_errors: True
 
 #*** Retrieve copy of main policy file that was used:

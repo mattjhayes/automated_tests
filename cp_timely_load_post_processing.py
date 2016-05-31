@@ -52,15 +52,18 @@ CRAFTED_MAC = sys.argv[4]
 #*** Constants for filenames to process:
 FILENAME_CRAFTED_PKT_SEND = 'crafted_pkt_starttime.txt'
 FILENAME_FLOWUPDATES = 'sw1.example.com-OF-snooping.txt'
+FILENAME_TCPDUMP = 'lg1.example.com-tcpdump_cp_timely.txt'
 
 #*** File to write control plane response time to:
-FILENAME_TT = 'post_process_control_plane_time_delta.txt'
+FILENAME_TT_SNOOP = 'post_process_control_plane_snoop_time_delta.txt'
+FILENAME_TT_TRAFFIC = 'post_process_control_plane_traffic_time_delta.txt'
 
 #*** Control plane response time to use if result not found:
 ERROR_TIME = 99
 
-#*** File to write errors to:
-FILENAME_ERROR = 'error.txt'
+#*** Files to write errors to:
+FILENAME_ERROR_SNOOP = 'error_openvswitch_snoop.txt'
+FILENAME_ERROR_TRAFFIC = 'error_traffic_capture.txt'
 
 #*** For finding flow entry that indicates MAC has been learnt (nmeta2):
 FT_FWD = 5
@@ -71,8 +74,6 @@ UTC = pytz.utc
 LOCAL_TZ = get_localzone()
 
 
-
-
 def main():
     """
     Main function
@@ -80,23 +81,39 @@ def main():
     #*** Get the time for when the crafted packet was sent:
     crafted_pkt_send_time = get_crafted_pkt_send_time()
 
+    #*** SNOOP CALCS, based off Open vSwitch snoop logs:
     #*** Get the time when forwarding was applied on the switch:
     forwarding_rule_time = get_forwarding_rule_time()
-
-    #*** Calculate the delta between Iperf start and traffic treatment:
     if crafted_pkt_send_time and forwarding_rule_time:
         delta = forwarding_rule_time - crafted_pkt_send_time
         result = TEST_TYPE + ',' + str(LOAD_RATE) + ',' \
                                             + str(delta.total_seconds())
         #*** Write result to file:
-        write_result(FILENAME_TT, result)
+        write_result(FILENAME_TT_SNOOP, result)
     else:
         #*** Uh-oh, something must have gone wrong... Lets write
         #*** something to file for triage later:
-        write_error("Error: crafted_pkt_send_time=" + \
+        write_error(FILENAME_ERROR_SNOOP, "Error: crafted_pkt_send_time=" + \
                     str(crafted_pkt_send_time) + \
                     " forwarding_rule_time=" + \
                     str(forwarding_rule_time))
+
+
+    #*** TRAFFIC CALCS, based off tcp dump last timestamp for crafted pkt:
+    traffic_last_time = get_traffic_last_time()
+    if crafted_pkt_send_time and traffic_last_time:
+        delta = traffic_last_time - crafted_pkt_send_time
+        result = TEST_TYPE + ',' + str(LOAD_RATE) + ',' \
+                                            + str(delta.total_seconds())
+        #*** Write result to file:
+        write_result(FILENAME_TT_TRAFFIC, result)
+    else:
+        #*** Uh-oh, something must have gone wrong... Lets write
+        #*** something to file for triage later:
+        write_error(FILENAME_ERROR_TRAFFIC, "Error: crafted_pkt_send_time=" + \
+                    str(crafted_pkt_send_time) + \
+                    " traffic_last_time=" + \
+                    str(traffic_last_time))
 
 def get_crafted_pkt_send_time():
     """
@@ -136,6 +153,38 @@ def get_forwarding_rule_time():
     else:
         print("WARNING: failed to find a forwarding rule install entry")
         return 0
+
+def get_traffic_last_time():
+    """
+    return the timestamp of the last line in the tcpdump file
+    """
+    traffic_last_time = 0
+    filename = os.path.join(TEST_DIR, FILENAME_TCPDUMP)
+    with open(filename, 'r') as f:
+        for line in f.readlines():
+            #*** Call function to check the line to see if it is
+            #***  a matching packet
+            #***  and if so, return time in UTC timezone:
+            packet_time = check_tcpdump_line(line, UTC)
+    return traffic_last_time
+
+def check_tcpdump_line(tcpdump_line, timezone):
+    """
+    Passed a line from a tcpdump file and determine if it is
+    a packet sent to the crafted packet. If it is then
+    return the time in usable format
+    (datetime object with correct timezone).
+    """
+    #*** Extract date/time from the line:
+    #1464686956.487762 08:00:27:c8:db:91 > 00:00:00:00:12:34, ethertype IPv4 (0x0800), length 60: 10.1.0.2.5678 > 10.1.2.3.1234: Flags [R.], seq 0, ack 1, win 0, length 0
+
+    #*** date time is in group 1:
+    tcpdump_match = \
+                re.match(r"^(\S+)\s^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$.*", tcpdump_line)
+    print("tcpdump_match is ", tcpdump_match)
+    # TBD
+
+    return 0
 
 def check_snoop_line(snoop_line, timezone):
     """
@@ -183,12 +232,12 @@ def write_result(filename, value):
     with open(result_filename, 'w') as f:
         print(value, file=f)
 
-def write_error(parameter):
+def write_error(error_filename, parameter):
     """
     Append an error message to error file
     """
     print(parameter)
-    error_filename = os.path.join(TEST_DIR, FILENAME_ERROR)
+    error_filename = os.path.join(TEST_DIR, error_filename)
     with open(error_filename, 'a') as f:
         print(parameter, file=f)
 
