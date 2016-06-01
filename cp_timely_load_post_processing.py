@@ -22,7 +22,11 @@ files to post-process, as well as the target load level and crafted MAC
 
 Example:
 
-./cp_timely_load_post_processing.py simpleswitch ~/results/timeliness/controlplane/20160516202631/simpleswitch/20160516203449 50 00:00:00:00:12:34
+./cp_timely_load_post_processing.py
+simpleswitch
+~/results/timeliness/controlplane/20160516202631/simpleswitch/20160516203449
+50
+00:00:00:00:12:34
 
 This script is called by the Ansible YAML template, so does not need to
 be run manually.
@@ -100,11 +104,12 @@ def main():
 
 
     #*** TRAFFIC CALCS, based off tcp dump last timestamp for crafted pkt:
-    traffic_last_time = get_traffic_last_time()
+    (traffic_last_time, matched_crafted_packets) = get_traffic_last_time()
     if crafted_pkt_send_time and traffic_last_time:
         delta = traffic_last_time - crafted_pkt_send_time
         result = TEST_TYPE + ',' + str(LOAD_RATE) + ',' \
-                                            + str(delta.total_seconds())
+                                 + str(delta.total_seconds()) + ',' \
+                                 + str(matched_crafted_packets)
         #*** Write result to file:
         write_result(FILENAME_TT_TRAFFIC, result)
     else:
@@ -159,16 +164,20 @@ def get_traffic_last_time():
     return the timestamp of the last line in the tcpdump file
     """
     traffic_last_time = 0
+    matched_crafted_packets = 0
     filename = os.path.join(TEST_DIR, FILENAME_TCPDUMP)
     with open(filename, 'r') as f:
         for line in f.readlines():
             #*** Call function to check the line to see if it is
             #***  a matching packet
             #***  and if so, return time in UTC timezone:
-            packet_time = check_tcpdump_line(line, UTC)
-    return traffic_last_time
+            packet_time = check_tcpdump_line(line)
+            if packet_time:
+                traffic_last_time = packet_time
+                matched_crafted_packets += 1
+    return (traffic_last_time, matched_crafted_packets)
 
-def check_tcpdump_line(tcpdump_line, timezone):
+def check_tcpdump_line(tcpdump_line):
     """
     Passed a line from a tcpdump file and determine if it is
     a packet sent to the crafted packet. If it is then
@@ -178,12 +187,22 @@ def check_tcpdump_line(tcpdump_line, timezone):
     #*** Extract date/time from the line:
     #1464686956.487762 08:00:27:c8:db:91 > 00:00:00:00:12:34, ethertype IPv4 (0x0800), length 60: 10.1.0.2.5678 > 10.1.2.3.1234: Flags [R.], seq 0, ack 1, win 0, length 0
 
-    #*** date time is in group 1:
-    tcpdump_match = \
-                re.match(r"^(\S+)\s^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$.*", tcpdump_line)
-    print("tcpdump_match is ", tcpdump_match)
-    # TBD
+    print("tcpdump_line is ", tcpdump_line)
 
+    tcpdump_match = \
+                re.match(r"^(\S+)\s([^\s]+)\s+\>\s+([^\,]+).*", tcpdump_line)
+    if tcpdump_match:
+        print("tcpdump_match is ", tcpdump_match.group(1), tcpdump_match.group(2), tcpdump_match.group(3))
+        if str(tcpdump_match.group(3)) == CRAFTED_MAC:
+            print("matched dst crafted MAC, returning time=", tcpdump_match.group(1))
+            #*** Convert timestamp:
+            pkt_time = datetime.fromtimestamp(float(tcpdump_match.group(1)))
+            pkt_time_tz = LOCAL_TZ.localize(pkt_time)
+            return pkt_time_tz
+        else:
+            print("Dst MAC ", tcpdump_match.group(3), " not equal to crafted MAC, returning 0")
+            return 0
+    print("no match, returning 0")
     return 0
 
 def check_snoop_line(snoop_line, timezone):

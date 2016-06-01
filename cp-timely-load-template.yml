@@ -187,8 +187,8 @@
 
     #*** Capture packets on load generator:
 
-    - name: Kill any old packet capture process
-      command: "sudo pkill -f pcmd.py"
+    - name: Kill any old tcpdump process
+      command: "sudo pkill -f tcpdump"
       ignore_errors: True
 
     - name: Set interface to be promiscuous so we can capture packets to crafted MAC
@@ -203,7 +203,13 @@
     - name: TCP dump to capture crafted packet returns to see when flooding stops because MAC learnt
       #shell: "nohup sudo tcpdump -nett -i eth1 'ether host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
       #shell: "nohup sudo tcpdump -nett -i eth1 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
-      shell: "sudo ~/testtools/misc/pcmd.py"
+      #shell: "sudo python ~/testtools/misc/pcmd.py 2>&1 &"
+      #shell: "nohup sudo tcpdump -nettl -i eth1 'ether host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
+      #shell: "nohup sudo tcpdump -nettl -i eth1 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
+
+      #*** Note the -l in the tcpdump, this is required for pipe to text file.
+      #*** Also the -tt puts the timestamp into seconds since epoch format
+      shell: "nohup sudo tcpdump -nettl -i eth1 host 10.1.2.3 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
       async: 90000
       poll: 0
 
@@ -287,34 +293,7 @@
     - name: Retrieve switch mosp performance results
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
-#*** Clean up tasks on load-generators:
-
-- hosts: load-generators
-
-  tasks:
-
-    - name: Retrieve flooding of crafted packet tcpdump output file
-      fetch: src=/tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-
-    - debug: msg="Clean-up Load Generator tasks..."
-
-    - name: Kill filt process
-      command: "sudo pkill -f tcpdump"
-      ignore_errors: True
-      
-    - name: Kill filt process
-      command: "sudo pkill -f filt"
-      ignore_errors: True
-
-    - name: Kill ping process
-      command: "sudo pkill -f ping"
-      ignore_errors: True
-
-    - name: Kill packet capture process
-      command: "sudo pkill -f pcmd.py"
-      ignore_errors: True
-
-#*** Retrieve copy of main policy file that was used:
+#*** Retrieve copy of main policy file that was used and stop any Ryu processes on Controller:
 - hosts: controllers
 
   tasks:
@@ -327,15 +306,33 @@
       fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
-#*** Stop any Ryu processes on Controller:
-
-- hosts: controllers
-
-  tasks:
-
     - name: Kill controller ryu processes (nmeta or simple switch etc)
       command: "sudo pkill -f ryu-manager"
       ignore_errors: True
+
+#*** Clean up tasks on load-generators:
+
+- hosts: load-generators
+
+  tasks:
+
+    - debug: msg="Clean-up Load Generator tasks..."
+
+    - name: Kill filt process
+      command: "sudo pkill -f tcpdump"
+      ignore_errors: True
+
+    - name: Retrieve flooding of crafted packet tcpdump output file
+      fetch: src=/tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Kill filt process
+      command: "sudo pkill -f filt"
+      ignore_errors: True
+
+    - name: Kill ping process
+      command: "sudo pkill -f ping"
+      ignore_errors: True
+
 
 #*** Run post processing on data:
 
