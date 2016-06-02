@@ -35,17 +35,24 @@ repeats = 3
 
 #*** Types of tests to run:
 #***  Note: don't do nmeta as it doesn't do MAC learning in switch
-tests = ["nmeta2-active", "nmeta2-passive", "simpleswitch"]
+tests = ["nmeta", "nmeta2-active", "nmeta2-passive", "simpleswitch"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
 results_dir = os.path.join(home_dir,
                                 "results/timeliness/controlplane/")
 
+
+#*** Server parameters for extra ip/mac:
+svr_int = 'eth1'
+svr_crafted_mac = '00:00:00:00:12:34'
+svr_crafted_ip = '10.1.2.7'
+svr_masklength = '22'
+
 #*** Parameters for repetition of tests with different filt rate:
-test_load_initial_rate = 10
+test_load_initial_rate = 50
 test_load_rate_increment = 10
-test_load_max_rate = 60
+test_load_max_rate = 150
 
 #*** Parameters for filt new flow rate load test:
 target_ip = "10.1.0.7"
@@ -57,12 +64,11 @@ proto = "6"
 dport = "12345"
 algorithm = "make-good"
 
-#*** Crafted MAC:
-crafted_mac = "00:00:00:00:12:34"
-
-#*** Ansible Playbook to use:
+#*** Ansible Playbooks to use:
 playbook = os.path.join(home_dir, \
                     "automated_tests/cp-timely-load-template.yml")
+playbook_svr = os.path.join(home_dir, \
+                    "automated_tests/server-extra-ip-and-mac.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -83,6 +89,17 @@ for test in tests:
 #*** Initialise:
 start_nmeta = "false"
 start_nmeta2 = "false"
+
+#*** Set extra ip and mac on server:
+print "running Ansible playbook to set up server extra ip and mac..."
+playbook_svr_cmd = "ansible-playbook " + playbook_svr + " --extra-vars "
+playbook_svr_cmd += "\"interface=" + svr_int
+playbook_svr_cmd += "mac=" + svr_crafted_mac
+playbook_svr_cmd += "ip=" + svr_crafted_ip
+playbook_svr_cmd += "masklength=" + svr_masklength
+playbook_svr_cmd += "\""
+print "playbook_svr_cmd is", playbook_svr_cmd
+os.system(playbook_svr_cmd)
 
 #*** Run tests:
 test_load_rate = test_load_initial_rate
@@ -135,7 +152,8 @@ for i in range(repeats):
             playbook_cmd += " dport=" + dport
             playbook_cmd += " algorithm=" + algorithm
             playbook_cmd += " policy_name=" + policy_name
-            playbook_cmd += " crafted_mac=" + crafted_mac
+            playbook_cmd += " crafted_mac=" + svr_crafted_mac
+            playbook_cmd += " crafted_ip=" + svr_crafted_ip
             playbook_cmd += "\""
             print "playbook_cmd is", playbook_cmd
 

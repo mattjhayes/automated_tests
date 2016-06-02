@@ -1,0 +1,50 @@
+---
+#- name: Server Extra IP and MAC
+
+#*** Version 0.1.0
+
+#*** Use this to add an extra ip/mac to a host for testing.
+#*** Needs to use network name spaces and in VirtualBox the
+#*** NICs need to be PC-net FAST III with promiscuous mode 'allow all'
+
+#*** Example usage:
+#***   ansible-playbook ~/automated_tests/server-extra-ip-and-mac.yml --extra-vars "interface=eth1 mac=00:00:00:00:12:34 ip=10.1.2.7 masklength=22"
+
+- hosts: servers
+
+  tasks:
+
+    #*** Add network namespace:
+    - name: Add network namespace ns1
+      shell: "sudo ip netns add ns1"
+      ignore_errors: True
+
+    #*** Create macvlan interface:
+    - name: Create macvlan interface mac0
+      shell: "sudo ip link add mac0 link {{ interface }} type macvlan mode bridge"
+      ignore_errors: True
+
+    #*** Move macvlan interface into namespace:
+    - name: Move macvlan interface mac0 into namespace ns1
+      shell: "sudo ip link set mac0 netns ns1"
+      ignore_errors: True
+
+    #*** Bring macvlan interface up:
+    - name: Bring macvlan interface up
+      shell: "sudo ip netns exec ns1 ip link set dev mac0 up"
+      ignore_errors: True
+
+
+    #*** Configure MAC address on macvlan interface:
+    - name: Configure MAC address on macvlan interface
+      shell: "sudo ip netns exec ns1 ip link set mac0 link {{ interface }} address {{ mac }}"
+      ignore_errors: True
+
+    #*** Configure MAC address on macvlan interface:
+    - name: Configure MAC address on macvlan interface
+      shell: "sudo ip netns exec ns1 ifconfig mac0 {{ ip }}/{{ masklength }} up"
+      ignore_errors: True
+
+
+#*** Show the interface:
+#sudo ip netns exec ns1 ifconfig mac0

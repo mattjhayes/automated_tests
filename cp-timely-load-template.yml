@@ -1,12 +1,12 @@
 ---
 #- name: CP Timeliness Tests of Control Plane MAC learning and Forwarding Rule Instantiation
 
-#*** Version 0.1.0
+#*** Version 0.2.0
 
 #*** Pass variables on the command line to determine the test type:
 #
 #*** Example nmeta baseline:
-#***   ansible-playbook ~/automated_tests/cp-timely-load-template.yml --extra-vars "start_nmeta=true start_nmeta2=false start_simple_switch=false test_type=nmeta results_dir=~/results/timeliness/statistical/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=10 flow_inc=10 incr_interval=100 proto=6 dport=12345 algorithm=make-good policy_name=main_policy_regression_statistical.yaml crafted_mac=00:00:00:00:12:34"
+#***   ansible-playbook ~/automated_tests/cp-timely-load-template.yml --extra-vars "start_nmeta=true start_nmeta2=false start_simple_switch=false test_type=nmeta results_dir=~/results/timeliness/statistical/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=10 flow_inc=10 incr_interval=100 proto=6 dport=12345 algorithm=make-good policy_name=main_policy_regression_statistical.yaml crafted_mac=00:00:00:00:12:34 crafted_ip=10.1.2.7"
 
 #*** Switch process clean-up:
 - hosts: switches
@@ -16,6 +16,10 @@
     - name: Kill switch mosp process
       command: "sudo pkill -f mosp"
       ignore_errors: True
+
+    #*** Restart Open vSwitch Services. May not be necessary?
+    - name: Restart Open vSwitch Switch Service
+      command: "sudo service openvswitch-switch restart"
 
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
@@ -117,14 +121,10 @@
   tasks:
 
     - name: Record input variables to file for the record
-      copy: content="cp-timely-load-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} start_simple_switch={{ start_simple_switch }} results_dir={{ results_dir }} policy_name={{ policy_name }} target_ip={{ target_ip }} target_mac={{ target_mac }} interface={{ interface }} initial_rate={{ initial_rate }} max_rate={{ max_rate }} flow_inc={{ flow_inc }} proto={{ proto }} dport={{ dport }} algorithm={{ algorithm }} crafted_mac={{ crafted_mac }}" dest=/tmp/cp-timely-load-template.yml.parameters.txt
+      copy: content="cp-timely-load-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} start_simple_switch={{ start_simple_switch }} results_dir={{ results_dir }} policy_name={{ policy_name }} target_ip={{ target_ip }} target_mac={{ target_mac }} interface={{ interface }} initial_rate={{ initial_rate }} max_rate={{ max_rate }} flow_inc={{ flow_inc }} proto={{ proto }} dport={{ dport }} algorithm={{ algorithm }} crafted_mac={{ crafted_mac }} crafted_ip={{ crafted_ip }}" dest=/tmp/cp-timely-load-template.yml.parameters.txt
 
     - name: Retrieve input variables file
       fetch: src=/tmp/cp-timely-load-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-
-    #*** Add static ARP to server back to IP with crafted MAC:
-    - name: Run nmeta2-dpae (if required) on dpae in the background
-      shell: "sudo arp -s 10.1.2.3 {{ crafted_mac }}"
 
 #*** Data Plane Auxiliary Engine, when doing nmeta2:
 - hosts: dpae
@@ -201,15 +201,9 @@
       ignore_errors: True
 
     - name: TCP dump to capture crafted packet returns to see when flooding stops because MAC learnt
-      #shell: "nohup sudo tcpdump -nett -i eth1 'ether host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
-      #shell: "nohup sudo tcpdump -nett -i eth1 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
-      #shell: "sudo python ~/testtools/misc/pcmd.py 2>&1 &"
-      #shell: "nohup sudo tcpdump -nettl -i eth1 'ether host {{ crafted_mac }}' > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
-      #shell: "nohup sudo tcpdump -nettl -i eth1 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
-
       #*** Note the -l in the tcpdump, this is required for pipe to text file.
       #*** Also the -tt puts the timestamp into seconds since epoch format
-      shell: "nohup sudo tcpdump -nettl -i eth1 host 10.1.2.3 > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
+      shell: "nohup sudo tcpdump -nettl -i eth1 host {{ crafted_ip }} > /tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt 2>&1 &"
       async: 90000
       poll: 0
 
@@ -251,8 +245,8 @@
 - hosts: clients
 
   tasks:
-    - name: Send a crafted packet from a MAC we haven't seen before
-      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py {{ crafted_mac }} 08:00:27:c8:db:91 0x800 10.1.2.3 10.1.0.2 1234 5678 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
+    - name: Send packets to crafted mac/ip to see how long they are flooded for
+      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py 08:00:27:2a:d6:dd {{ crafted_mac }} 0x800 10.1.0.2 {{ crafted_ip }} 1234 5678 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
 
     - name: Retrieve crafted packet start time
       fetch: src=/tmp/crafted_pkt_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
@@ -324,6 +318,9 @@
 
     - name: Retrieve flooding of crafted packet tcpdump output file
       fetch: src=/tmp/{{ inventory_hostname }}-tcpdump_cp_timely.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve flooding of crafted packet tcpdump output file
+      fetch: src=/tmp/{{ inventory_hostname }}-tcpdump_cp_timely.pcap dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
     - name: Kill filt process
       command: "sudo pkill -f filt"

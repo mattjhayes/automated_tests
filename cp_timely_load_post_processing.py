@@ -180,12 +180,14 @@ def get_traffic_last_time():
 def check_tcpdump_line(tcpdump_line):
     """
     Passed a line from a tcpdump file and determine if it is
-    a packet sent to the crafted packet. If it is then
+    a packet sent to the crafted mac. If it is then
     return the time in usable format
     (datetime object with correct timezone).
     """
     #*** Extract date/time from the line:
-    #1464686956.487762 08:00:27:c8:db:91 > 00:00:00:00:12:34, ethertype IPv4 (0x0800), length 60: 10.1.0.2.5678 > 10.1.2.3.1234: Flags [R.], seq 0, ack 1, win 0, length 0
+
+    #1464863476.514938 08:00:27:2a:d6:dd > 00:00:00:00:12:34, ethertype IPv4 (0x0800), length 60: 10.1.0.2.1234 > 10.1.2.7.5678: Flags [S], seq 0, win 8192, length 0
+
 
     print("tcpdump_line is ", tcpdump_line)
 
