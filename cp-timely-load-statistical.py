@@ -35,7 +35,7 @@ repeats = 3
 
 #*** Types of tests to run:
 #***  Note: don't do nmeta as it doesn't do MAC learning in switch
-tests = ["nmeta", "nmeta2-active", "nmeta2-passive", "simpleswitch"]
+tests = ["nosdn", "nmeta", "nmeta2-active", "nmeta2-passive", "simpleswitch"]
 
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
@@ -135,6 +135,12 @@ for i in range(repeats):
                 start_nmeta2 = "false"
                 nmeta2_mode = "none"
                 start_simple_switch = "true"
+                policy_name = " none"
+            elif test == "nosdn":
+                start_nmeta = "false"
+                start_nmeta2 = "false"
+                nmeta2_mode = "none"
+                start_simple_switch = "false"
                 policy_name = " none"
             else:
                 print "ERROR: unknown test type", test
