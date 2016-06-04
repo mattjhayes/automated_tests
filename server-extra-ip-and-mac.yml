@@ -14,11 +14,15 @@
 
   tasks:
 
+    #*** Static return ARP:
+    - name: Static ARP for pc1
+      shell: "sudo arp -s 10.1.0.1 08:00:27:2a:d6:dd"
+      ignore_errors: True
+
     #*** Add network namespace:
     - name: Add network namespace ns1
       shell: "sudo ip netns add ns1"
       ignore_errors: True
-      when: mac0 != 'true'
 
     - name: Pause
       pause: seconds=1

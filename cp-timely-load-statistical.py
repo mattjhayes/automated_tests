@@ -69,6 +69,9 @@ playbook = os.path.join(home_dir, \
                     "automated_tests/cp-timely-load-template.yml")
 playbook_svr = os.path.join(home_dir, \
                     "automated_tests/server-extra-ip-and-mac.yml")
+#*** TBD:
+#playbook_warmup = os.path.join(home_dir, \
+#            "automated_tests/nfps-load-tests-template-warmup.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
