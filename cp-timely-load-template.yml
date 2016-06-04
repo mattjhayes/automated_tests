@@ -92,6 +92,10 @@
     - name: Pause to allow time for switch to connect to controller
       pause: seconds=6
 
+    #*** Get controller initial packets on interface for telemetry:
+    - name: Get controller eth interface initial packets
+      shell: "ifconfig eth2 > /tmp/{{ inventory_hostname }}_interface_eth2_initial.txt"
+
 #*** Create a timestamp variable for the test:
 
 - hosts: clients
@@ -125,6 +129,10 @@
 
     - name: Retrieve input variables file
       fetch: src=/tmp/cp-timely-load-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    #*** Get server initial packets on interface for telemetry:
+    - name: Get controller eth interface initial packets
+      shell: "sudo ip netns exec ns1 ifconfig mac0 > /tmp/{{ inventory_hostname }}_interface_mac0_initial.txt"
 
 #*** Data Plane Auxiliary Engine, when doing nmeta2:
 - hosts: dpae
@@ -246,7 +254,7 @@
 
   tasks:
     - name: Send packets to crafted mac/ip to see how long they are flooded for
-      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py 08:00:27:2a:d6:dd {{ crafted_mac }} 0x800 10.1.0.2 {{ crafted_ip }} 1234 5678 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
+      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py 08:00:27:2a:d6:dd {{ crafted_mac }} 0x800 10.1.0.2 {{ crafted_ip }} 2345 6789 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
 
     - name: Retrieve crafted packet start time
       fetch: src=/tmp/crafted_pkt_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
@@ -292,17 +300,40 @@
 
   tasks:
 
-    - name: Retrieve the main policy file
-      fetch: src=~/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
-      when: start_nmeta
+    #*** Get controller final packets on interface for telemetry and retrieve both files:
+    - name: Get controller eth interface final packets
+      shell: "ifconfig eth2 > /tmp/{{ inventory_hostname }}_interface_eth2_final.txt"
 
+    - name: Retrieve eth2 initial file
+      fetch: src=/tmp/{{ inventory_hostname }}_interface_eth2_initial.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve eth2 final file
+      fetch: src=/tmp/{{ inventory_hostname }}_interface_eth2_final.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    #*** Retrieve main policy file for the record:
     - name: Retrieve the main policy file
       fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
+    #*** Process tidy-up:
     - name: Kill controller ryu processes (nmeta or simple switch etc)
       command: "sudo pkill -f ryu-manager"
       ignore_errors: True
+
+#*** Retrieve Server telemetry:
+
+- hosts: servers
+
+  tasks:
+    #*** Get server final packets on interface for telemetry and retrieve both files:
+    - name: Get controller eth interface final packets
+      shell: "sudo ip netns exec ns1 ifconfig mac0 > /tmp/{{ inventory_hostname }}_interface_mac0_final.txt"
+
+    - name: Retrieve eth2 initial file
+      fetch: src=/tmp/{{ inventory_hostname }}_interface_mac0_initial.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve eth2 final file
+      fetch: src=/tmp/{{ inventory_hostname }}_interface_mac0_final.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Clean up tasks on load-generators:
 

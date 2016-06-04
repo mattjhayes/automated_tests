@@ -50,7 +50,7 @@ svr_crafted_ip = '10.1.2.7'
 svr_masklength = '22'
 
 #*** Parameters for repetition of tests with different filt rate:
-test_load_initial_rate = 50
+test_load_initial_rate = 10
 test_load_rate_increment = 10
 test_load_max_rate = 150
 
@@ -94,9 +94,9 @@ start_nmeta2 = "false"
 print "running Ansible playbook to set up server extra ip and mac..."
 playbook_svr_cmd = "ansible-playbook " + playbook_svr + " --extra-vars "
 playbook_svr_cmd += "\"interface=" + svr_int
-playbook_svr_cmd += "mac=" + svr_crafted_mac
-playbook_svr_cmd += "ip=" + svr_crafted_ip
-playbook_svr_cmd += "masklength=" + svr_masklength
+playbook_svr_cmd += " mac=" + svr_crafted_mac
+playbook_svr_cmd += " ip=" + svr_crafted_ip
+playbook_svr_cmd += " masklength=" + svr_masklength
 playbook_svr_cmd += "\""
 print "playbook_svr_cmd is", playbook_svr_cmd
 os.system(playbook_svr_cmd)
@@ -113,7 +113,8 @@ for i in range(repeats):
                 start_nmeta2 = "false"
                 nmeta2_mode = "none"
                 start_simple_switch = "false"
-                policy_name = "main_policy_regression_statistical.yaml"
+                #*** TBD, make statistical, is it bug?
+                policy_name = "main_policy_regression_static.yaml"
             elif test == "nmeta2-active":
                 start_nmeta = "false"
                 start_nmeta2 = "true"
@@ -160,6 +161,6 @@ for i in range(repeats):
             print "running Ansible playbook..."
             os.system(playbook_cmd)
             print "Sleeping... zzzz"
-            time.sleep(30)
+            time.sleep(10)
 
         test_load_rate = test_load_rate + test_load_rate_increment

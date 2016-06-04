@@ -58,9 +58,17 @@ FILENAME_CRAFTED_PKT_SEND = 'crafted_pkt_starttime.txt'
 FILENAME_FLOWUPDATES = 'sw1.example.com-OF-snooping.txt'
 FILENAME_TCPDUMP = 'lg1.example.com-tcpdump_cp_timely.txt'
 
-#*** File to write control plane response time to:
-FILENAME_TT_SNOOP = 'post_process_control_plane_snoop_time_delta.txt'
-FILENAME_TT_TRAFFIC = 'post_process_control_plane_traffic_time_delta.txt'
+#*** Files to write control plane response time to:
+FILENAME_TT_SNOOP = 'post_process_control_plane_snoop_time_delta.csv'
+FILENAME_TT_TRAFFIC = 'post_process_control_plane_traffic_time_delta.csv'
+
+#*** Packet telemetry parameters:
+FILENAME_INPUT_INITIAL_CT_PKTS = 'ct1.example.com_interface_eth2_initial.txt'
+FILENAME_INPUT_FINAL_CT_PKTS = 'ct1.example.com_interface_eth2_final.txt'
+FILENAME_RESULT_CT_PKTS = 'post_process_controller_pkts.csv'
+FILENAME_INPUT_INITIAL_SV_PKTS = 'sv1.example.com_interface_mac0_initial.txt'
+FILENAME_INPUT_FINAL_SV_PKTS = 'sv1.example.com_interface_mac0_final.txt'
+FILENAME_RESULT_SV_PKTS = 'post_process_server_pkts.csv'
 
 #*** Control plane response time to use if result not found:
 ERROR_TIME = 99
@@ -120,6 +128,48 @@ def main():
                     " traffic_last_time=" + \
                     str(traffic_last_time))
 
+    #*** Controller interface packet calcs:
+    ct1_initial_pkts_in = 0
+    ct1_initial_pkts_out = 0
+    ct1_final_pkts_in = 0
+    ct1_final_pkts_out = 0
+    (ct1_initial_pkts_in, ct1_initial_pkts_out) = get_pkts(FILENAME_INPUT_INITIAL_CT_PKTS)
+    (ct1_final_pkts_in, ct1_final_pkts_out) = get_pkts(FILENAME_INPUT_FINAL_CT_PKTS)
+    if ct1_initial_pkts_in and ct1_final_pkts_in:
+        ct1_pkts_in = ct1_final_pkts_in - ct1_initial_pkts_in
+    else:
+        ct1_pkts_in = 0
+    if ct1_initial_pkts_out and ct1_final_pkts_out:
+        ct1_pkts_out = ct1_final_pkts_out - ct1_initial_pkts_out
+    else:
+        ct1_pkts_out = 0
+    #*** Write result to file:
+    result = TEST_TYPE + ',' + str(LOAD_RATE) + ',' \
+                                 + str(ct1_pkts_in) + ',' \
+                                 + str(ct1_pkts_out)
+    write_result(FILENAME_RESULT_CT_PKTS, result)
+
+    #*** Server interface packet calcs:
+    sv1_initial_pkts_in = 0
+    sv1_initial_pkts_out = 0
+    sv1_final_pkts_in = 0
+    sv1_final_pkts_out = 0
+    (sv1_initial_pkts_in, sv1_initial_pkts_out) = get_pkts(FILENAME_INPUT_INITIAL_SV_PKTS)
+    (sv1_final_pkts_in, sv1_final_pkts_out) = get_pkts(FILENAME_INPUT_FINAL_SV_PKTS)
+    if sv1_initial_pkts_in and sv1_final_pkts_in:
+        sv1_pkts_in = sv1_final_pkts_in - sv1_initial_pkts_in
+    else:
+        sv1_pkts_in = 0
+    if sv1_initial_pkts_out and sv1_final_pkts_out:
+        sv1_pkts_out = sv1_final_pkts_out - sv1_initial_pkts_out
+    else:
+        sv1_pkts_out = 0
+    #*** Write result to file:
+    result = TEST_TYPE + ',' + str(LOAD_RATE) + ',' \
+                                 + str(sv1_pkts_in) + ',' \
+                                 + str(sv1_pkts_out)
+    write_result(FILENAME_RESULT_SV_PKTS, result)
+
 def get_crafted_pkt_send_time():
     """
     Return the crafted packet send time, or 0 if error
@@ -128,7 +178,7 @@ def get_crafted_pkt_send_time():
     #*** Read in the crafted_pkt start time:
     filename = os.path.join(TEST_DIR, FILENAME_CRAFTED_PKT_SEND)
     with open(filename, 'r') as f:
-         crafted_pkt_st = f.readline()
+        crafted_pkt_st = f.readline()
     if crafted_pkt_st:
         crafted_pkt_st = datetime.fromtimestamp(float(crafted_pkt_st))
         crafted_pkt_st_tz = LOCAL_TZ.localize(crafted_pkt_st)
@@ -217,6 +267,11 @@ def check_snoop_line(snoop_line, timezone):
     """
     #*** Extract date/time from the line:
     #*** Example line start: 2016-04-14 09:14:38.592: OFPT_FLOW_MOD...
+
+    #*** Example simpleswitch entry:
+    #2016-06-03 10:40:01.866: OFPT_FLOW_MOD (OF1.3) (xid=0x9d35135e): ADD priority=1,in_port=1,dl_dst=00:00:00:00:12:34 out_port:0 actions=output:2
+
+    
     #*** date time is in group 1:
     of_snoop_match = \
                 re.match(r"^(\d+\-\d+\-\d+\s+\d+\:\d+\:\d+\.\d+).*",
@@ -229,7 +284,7 @@ def check_snoop_line(snoop_line, timezone):
                 snoop_line)
         elif TEST_TYPE == 'simpleswitch':
             treatment_match = \
-                re.search(r"dl_dst\=00\:00\:00\:00\:12\:34\sout\_port\:0\sactions\=\output\:1",
+                re.search(r"dl_dst\=00\:00\:00\:00\:12\:34\sout\_port\:0\sactions\=\output\:2",
                 snoop_line)
         else:
             print("Error, unknown test type ", TEST_TYPE)
@@ -243,6 +298,38 @@ def check_snoop_line(snoop_line, timezone):
             print("treatment_time_tz is ", tt_datetime2_tz)
             return tt_datetime2_tz
     return 0
+
+def get_pkts(filename):
+    """
+    Read in a Linux interface text output and return the RX and TX
+    packet counts. Example input:
+
+    mac0    Link encap:Ethernet  HWaddr 00:00:00:00:12:34  
+            inet addr:10.1.2.7  Bcast:10.1.3.255  Mask:255.255.252.0
+            inet6 addr: fe80::2ce7:79ff:feb8:93b0/64 Scope:Link
+            UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+            RX packets:804 errors:0 dropped:0 overruns:0 frame:0
+            TX packets:418 errors:0 dropped:0 overruns:0 carrier:0
+            collisions:0 txqueuelen:0 
+            RX bytes:48240 (48.2 KB)  TX bytes:22668 (22.6 KB)
+
+    Result would be tuple of 804, 418
+    """
+    pkts_in = 0
+    pkts_out = 0
+    filename = os.path.join(TEST_DIR, filename)
+    with open(filename, 'r') as f:
+        for line in f.readlines():
+            #*** Try RX and TX matches:
+            rx_pkt_match = \
+                re.search(r"^\s+RX\spackets\:(\d+).*", line)
+            if rx_pkt_match:
+                pkts_in = rx_pkt_match.group(1)
+            tx_pkt_match = \
+                re.search(r"^\s+TX\spackets\:(\d+).*", line)
+            if tx_pkt_match:
+                pkts_out = tx_pkt_match.group(1)
+    return int(pkts_in), int(pkts_out)
 
 def write_result(filename, value):
     """

@@ -14,37 +14,49 @@
 
   tasks:
 
+    #*** Check if interface mac0 exists in namespace ns1.
+    #*** Use this as a conditional for subsequent commands to
+    #*** avoid reconfiguring if it already exists:
+    - name: Check if mac0 exists in namespace ns1
+      shell: "sudo ip netns exec ns1 ifconfig mac0"
+      ignore_errors: True
+      register: mac0
+
     #*** Add network namespace:
     - name: Add network namespace ns1
       shell: "sudo ip netns add ns1"
       ignore_errors: True
+      when: mac0 != 'true'
 
     #*** Create macvlan interface:
     - name: Create macvlan interface mac0
       shell: "sudo ip link add mac0 link {{ interface }} type macvlan mode bridge"
       ignore_errors: True
+      when: mac0 != 'true'
 
     #*** Move macvlan interface into namespace:
     - name: Move macvlan interface mac0 into namespace ns1
       shell: "sudo ip link set mac0 netns ns1"
       ignore_errors: True
+      when: mac0 != 'true'
 
     #*** Bring macvlan interface up:
     - name: Bring macvlan interface up
       shell: "sudo ip netns exec ns1 ip link set dev mac0 up"
       ignore_errors: True
-
+      when: mac0 != 'true'
 
     #*** Configure MAC address on macvlan interface:
     - name: Configure MAC address on macvlan interface
       shell: "sudo ip netns exec ns1 ip link set mac0 link {{ interface }} address {{ mac }}"
       ignore_errors: True
+      when: mac0 != 'true'
 
-    #*** Configure MAC address on macvlan interface:
+    #*** Configure IP address on macvlan interface:
     - name: Configure MAC address on macvlan interface
       shell: "sudo ip netns exec ns1 ifconfig mac0 {{ ip }}/{{ masklength }} up"
       ignore_errors: True
-
+      when: mac0 != 'true'
 
 #*** Show the interface:
 #sudo ip netns exec ns1 ifconfig mac0

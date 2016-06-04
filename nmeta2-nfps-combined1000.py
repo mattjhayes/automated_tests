@@ -25,7 +25,7 @@ import sys
 version = "0.2.0"
 
 #*** How many times to run the set of tests:
-repeats = 12
+repeats = 3
 
 #*** Types of tests to run:
 tests = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"]
