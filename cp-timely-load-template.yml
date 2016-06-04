@@ -242,6 +242,11 @@
       shell: "sudo ~/testtools/filt/filt.py --target-ip {{ target_ip }}  --target-mac {{ target_mac }} --interface {{ interface }} --bypass-warn --max-flow-rate {{ max_rate }} --flow-rate-increase {{ flow_inc }} --increment-interval {{ incr_interval }} --protocol {{ proto }} --dport {{ dport }} --initial-flow-rate {{ initial_rate }} --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ algorithm }}.csv --algorithm {{ algorithm }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
       async: 90000
       poll: 0
+      #register: filt_output
+
+    #*** TEMP:
+    #- name: See filt output
+    #  debug: var=filt_output
 
     - debug: msg="Wait for filt to ramp up"
 

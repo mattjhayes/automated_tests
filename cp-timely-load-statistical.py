@@ -59,7 +59,7 @@ target_ip = "10.1.0.7"
 target_mac = "08:00:27:40:e4:4c"
 interface = "eth1"
 flow_inc = "5"
-incr_interval = "1"
+incr_interval = "20"
 proto = "6"
 dport = "12345"
 algorithm = "make-good"
@@ -90,16 +90,19 @@ for test in tests:
 start_nmeta = "false"
 start_nmeta2 = "false"
 
-#*** Set extra ip and mac on server:
-print "running Ansible playbook to set up server extra ip and mac..."
-playbook_svr_cmd = "ansible-playbook " + playbook_svr + " --extra-vars "
-playbook_svr_cmd += "\"interface=" + svr_int
-playbook_svr_cmd += " mac=" + svr_crafted_mac
-playbook_svr_cmd += " ip=" + svr_crafted_ip
-playbook_svr_cmd += " masklength=" + svr_masklength
-playbook_svr_cmd += "\""
-print "playbook_svr_cmd is", playbook_svr_cmd
-os.system(playbook_svr_cmd)
+setup_server_nic = raw_input("Set up server NIC? (y, otherwise no): ")
+print "setup_server_nic is", setup_server_nic
+if setup_server_nic == 'y':
+    #*** Set extra ip and mac on server:
+    print "running Ansible playbook to set up server extra ip and mac..."
+    playbook_svr_cmd = "ansible-playbook " + playbook_svr + " --extra-vars "
+    playbook_svr_cmd += "\"interface=" + svr_int
+    playbook_svr_cmd += " mac=" + svr_crafted_mac
+    playbook_svr_cmd += " ip=" + svr_crafted_ip
+    playbook_svr_cmd += " masklength=" + svr_masklength
+    playbook_svr_cmd += "\""
+    print "playbook_svr_cmd is", playbook_svr_cmd
+    os.system(playbook_svr_cmd)
 
 #*** Run tests:
 for i in range(repeats):
