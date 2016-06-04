@@ -17,10 +17,26 @@
     #*** Check if interface mac0 exists in namespace ns1.
     #*** Use this as a conditional for subsequent commands to
     #*** avoid reconfiguring if it already exists:
-    - name: Check if mac0 exists in namespace ns1
-      shell: "sudo ip netns exec ns1 ifconfig mac0"
+    #- name: Check if mac0 exists in namespace ns1
+    #  shell: "sudo ip netns exec ns1 ifconfig mac0"
+    #  ignore_errors: True
+    #  register: mac0
+
+    - name: Check if mac0 exists by PING
+      shell: "ping -c 1 {{ ip }}"
       ignore_errors: True
       register: mac0
+
+    - name: See what interface check returned
+      debug: var=mac0
+
+    - name: Check if mac0 exists by PING
+      shell: "ping -c 1 10.1.2.13"
+      ignore_errors: True
+      register: mac1
+
+    - name: See what interface check returned (for 10.1.2.13)
+      debug: var=mac1
 
     #*** Add network namespace:
     - name: Add network namespace ns1
@@ -28,11 +44,17 @@
       ignore_errors: True
       when: mac0 != 'true'
 
+    - name: Pause
+      pause: seconds=1
+
     #*** Create macvlan interface:
     - name: Create macvlan interface mac0
       shell: "sudo ip link add mac0 link {{ interface }} type macvlan mode bridge"
       ignore_errors: True
       when: mac0 != 'true'
+
+    - name: Pause
+      pause: seconds=1
 
     #*** Move macvlan interface into namespace:
     - name: Move macvlan interface mac0 into namespace ns1
@@ -40,17 +62,26 @@
       ignore_errors: True
       when: mac0 != 'true'
 
+    - name: Pause
+      pause: seconds=1
+
     #*** Bring macvlan interface up:
     - name: Bring macvlan interface up
       shell: "sudo ip netns exec ns1 ip link set dev mac0 up"
       ignore_errors: True
       when: mac0 != 'true'
 
+    - name: Pause
+      pause: seconds=1
+
     #*** Configure MAC address on macvlan interface:
     - name: Configure MAC address on macvlan interface
       shell: "sudo ip netns exec ns1 ip link set mac0 link {{ interface }} address {{ mac }}"
       ignore_errors: True
       when: mac0 != 'true'
+
+    - name: Pause
+      pause: seconds=1
 
     #*** Configure IP address on macvlan interface:
     - name: Configure MAC address on macvlan interface

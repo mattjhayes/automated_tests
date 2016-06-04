@@ -51,8 +51,8 @@ svr_masklength = '22'
 
 #*** Parameters for repetition of tests with different filt rate:
 test_load_initial_rate = 10
-test_load_rate_increment = 10
-test_load_max_rate = 150
+test_load_rate_increment = 20
+test_load_max_rate = 250
 
 #*** Parameters for filt new flow rate load test:
 target_ip = "10.1.0.7"
@@ -102,8 +102,8 @@ print "playbook_svr_cmd is", playbook_svr_cmd
 os.system(playbook_svr_cmd)
 
 #*** Run tests:
-test_load_rate = test_load_initial_rate
 for i in range(repeats):
+    test_load_rate = test_load_initial_rate
     while test_load_rate <= test_load_max_rate:
         for test in tests:
             print "running test", test
@@ -146,7 +146,7 @@ for i in range(repeats):
             playbook_cmd += " target_mac=" + target_mac
             playbook_cmd += " interface=" + interface
             playbook_cmd += " initial_rate=" + str(test_load_rate)
-            playbook_cmd += " max_rate=" + str(test_load_rate)
+            playbook_cmd += " max_rate=" + str(test_load_rate + 10)
             playbook_cmd += " flow_inc=" + str(test_load_rate_increment)
             playbook_cmd += " incr_interval=" + incr_interval
             playbook_cmd += " proto=" + proto
@@ -162,5 +162,6 @@ for i in range(repeats):
             os.system(playbook_cmd)
             print "Sleeping... zzzz"
             time.sleep(10)
-
+        #*** Increment load rate:
         test_load_rate = test_load_rate + test_load_rate_increment
+
