@@ -25,7 +25,7 @@ import sys
 version = "0.1.0"
 
 #*** How many times to run the set of tests:
-repeats = 12
+repeats = 30
 
 #*** Types of tests to run:
 tests = ["nmeta2-statistical-active", "nmeta2-statistical-passive"]
@@ -65,7 +65,8 @@ start_nmeta2="false"
 #*** Run tests
 for i in range(repeats):
     for test in tests:
-        print "running test", test
+        print "running test", test, "test suite iteration", i+1, "of",
+                                                            repeats
         test_dir=os.path.join(test_basedir, test)
         if test == "nmeta2-statistical-active":
             start_nmeta="false"
