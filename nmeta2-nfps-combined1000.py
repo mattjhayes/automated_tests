@@ -97,7 +97,8 @@ time.sleep(30)
 #*** Run tests
 for i in range(repeats):
     for test in tests:
-        print "running test", test
+        print "running test", test, "test suite iteration", i+1, "of", \
+                                                            repeats
         test_dir=os.path.join(test_basedir, test)
         if test == "nmeta":
             start_nmeta = "true"

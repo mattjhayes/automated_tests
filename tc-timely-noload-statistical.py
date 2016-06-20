@@ -65,7 +65,7 @@ start_nmeta2="false"
 #*** Run tests
 for i in range(repeats):
     for test in tests:
-        print "running test", test, "test suite iteration", i+1, "of",
+        print "running test", test, "test suite iteration", i+1, "of", \
                                                             repeats
         test_dir=os.path.join(test_basedir, test)
         if test == "nmeta2-statistical-active":

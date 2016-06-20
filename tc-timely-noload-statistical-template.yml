@@ -78,7 +78,7 @@
       when: start_nmeta2
 
     - name: Pause to allow time for switch to connect to controller
-      pause: seconds=6
+      pause: seconds=8
       
 #*** Record start Iperf server on server and record test parameters:
 - hosts: servers
@@ -118,6 +118,7 @@
       command: "pgrep -f nmeta2dpae.py"
       when: start_nmeta2
 
+#*** Set up the results timestamp
 - hosts: clients
 
   tasks:
@@ -158,6 +159,9 @@
       async: 90000
       poll: 0
 
+    - name: Pause to allow time for switch snooping to commence
+      pause: seconds=3
+
 #*** Run Iperf Test:
 
 - hosts: clients
@@ -194,6 +198,12 @@
 
   tasks:
 
+    - debug: msg="Tidying up by killing unwanted switch async processes and retrieve results..."
+
+    - name: Kill switch OpenFlow snooping
+      command: "sudo pkill -f ovs-ofctl"
+      ignore_errors: True
+
     - name: Dump the Switch Flow Table
       shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt"
 
@@ -225,18 +235,6 @@
       fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
-#*** Stop switch OpenFlow snooping:
-
-- hosts: switches
-
-  tasks:
-
-    - debug: msg="Tidying up by killing unwanted async processes..."
-
-    - name: Kill switch OpenFlow snooping
-      command: "sudo pkill -f ovs-ofctl"
-      ignore_errors: True
-
 #*** Stop any Ryu processes on Controller:
 
 - hosts: controllers
@@ -247,9 +245,18 @@
       command: "sudo pkill -f ryu-manager"
       ignore_errors: True
 
-#*** Run post processing on data:
+    #*** Run post processing on data:
 
     - name: run post processing on data
       local_action: shell /home/bob/automated_tests/tc_timely_data_post_processing.py {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/
       when: start_nmeta2
 
+#*** Data Plane Auxiliary Engine clean-up, when doing nmeta2:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
