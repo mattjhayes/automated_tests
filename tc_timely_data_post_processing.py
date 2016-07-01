@@ -43,7 +43,7 @@ from tzlocal import get_localzone
 import re
 
 #*** Constants for filenames to process:
-FILENAME_IPERF_START = 'iperf_starttime.txt'
+FILENAME_IPERF_START = 'pc1.example.com-iperf_starttime.txt'
 FILENAME_FLOWUPDATES = 'sw1.example.com-OF-snooping.txt'
 FILENAME_FLOWTABLE = 'sw1.example.com-flows.txt'
 
@@ -53,6 +53,9 @@ FILENAME_TT = 'post_process_treatment_time_delta.txt'
 FILENAME_DPAE_PKTS = 'post_process_dpae_pkts.txt'
 #*** File to write errors to:
 FILENAME_ERROR = 'error.txt'
+
+#*** Time in seconds to use if treatment wasn't applied:
+TREATMENT_FAILED_TIME = 0.99
 
 #*** For finding flow entry that sends packets to DPAE:
 FT_TC = 3
@@ -133,7 +136,7 @@ def get_treatment_time():
         return treatment_time
     else:
         print("WARNING: failed to find a treatment entry")
-        return 0
+        return TREATMENT_FAILED_TIME
 
 def check_snoop_line(snoop_line, timezone):
     """

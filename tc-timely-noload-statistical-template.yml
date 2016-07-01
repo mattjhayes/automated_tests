@@ -8,6 +8,32 @@
 #*** Example nmeta baseline:
 #***   ansible-playbook ~/automated_tests/tc-timely-noload-statistical-template.yml --extra-vars "start_nmeta=true start_nmeta2=false duration=10 results_dir=~/results/timeliness/statistical/ policy_name=main_policy_regression_statistical.yaml"
 
+#*** Set up the results timestamp
+- hosts: clients
+
+  tasks:
+
+    - name: Kill any running Iperf processes
+      command: "sudo pkill -f iperf"
+      ignore_errors: True
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+
 #*** Switch process clean-up:
 - hosts: switches
 
@@ -94,8 +120,11 @@
       async: 90000
       poll: 0
 
+    - name: Create server results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
     - name: Record input variables to file for the record
-      copy: content="tc-timely-noload-statistical-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} duration={{ duration }} results_dir={{ results_dir }} policy_name={{ policy_name }}" dest=/tmp/tc-timely-noload-statistical-template.yml.parameters.txt
+      copy: content="tc-timely-noload-statistical-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} duration={{ duration }} results_dir={{ results_dir }} policy_name={{ policy_name }}" dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/tc-timely-noload-statistical-template.yml.parameters.txt
 
 #*** Data Plane Auxiliary Engine, when doing nmeta2:
 - hosts: dpae
@@ -118,31 +147,6 @@
       command: "pgrep -f nmeta2dpae.py"
       when: start_nmeta2
 
-#*** Set up the results timestamp
-- hosts: clients
-
-  tasks:
-
-    - name: Kill any running Iperf processes
-      command: "sudo pkill -f iperf"
-      ignore_errors: True
-
-    - name: Generate global results timestamp variable
-      local_action: shell date +%Y%m%d%H%M%S
-      register: results_timestamp
-      run_once: true
-
-    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
-
-    - debug: msg="Creating local and remote result folders..."
-
-    - name: Create local results folder
-      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
-      register: create_local_results_folder
-      run_once: true
-
-    - name: Create client results folder
-      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
 
 #*** Set up monitoring on the switch for flow table modification timestamps:
 
@@ -160,7 +164,7 @@
       poll: 0
 
     - name: Pause to allow time for switch snooping to commence
-      pause: seconds=3
+      pause: seconds=6
 
 #*** Run Iperf Test:
 
@@ -168,9 +172,12 @@
 
   tasks:
 
+    #*** Bail out of test if PING fails:
     - name: send PING to server so that MAC table is current in both directions
-      shell: "ping -c 2 sv1"
-      ignore_errors: True
+      shell: "ping -c 1 sv1"
+
+    - name: Pause to allow time for MAC learning
+      pause: seconds=4
 
     - name: run tcpdump in background for set number of packets with overview to file
       shell: "nohup sudo tcpdump -i eth1 -c 20 > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-tcpdump.txt 2>&1 &"
@@ -178,13 +185,13 @@
       poll: 0
 
     - name: Run Iperf tcp-5555 test from Client
-      shell: "~/testtools/tosc/tosc.py /tmp/iperf_starttime.txt 'iperf -c sv1 -p 5555 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt' /tmp/iperf_endtime.txt"
+      shell: "~/testtools/tosc/tosc.py {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_starttime.txt 'iperf -c sv1 -p 5555 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt' {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_endtime.txt"
 
     - name: Retrieve Iperf start time
-      fetch: src=/tmp/iperf_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
     - name: Retrieve Iperf end time
-      fetch: src=/tmp/iperf_endtime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_endtime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
     - name: Retrieve Iperf results
       fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
@@ -220,7 +227,7 @@
   tasks:
 
     - name: Retrieve input variables file
-      fetch: src=/tmp/regression-static-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/regression-static-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Retrieve copy of main policy file that was used:
 - hosts: controllers
