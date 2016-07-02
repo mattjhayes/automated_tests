@@ -46,11 +46,18 @@ import re
 FILENAME_IPERF_START = 'pc1.example.com-iperf_starttime.txt'
 FILENAME_FLOWUPDATES = 'sw1.example.com-OF-snooping.txt'
 FILENAME_FLOWTABLE = 'sw1.example.com-flows.txt'
+FILENAME_DPAE_PKTS_B4 = 'dp1.example.com-in-pkts-b4-test.txt'
+FILENAME_DPAE_PKTS_AFTER = 'dp1.example.com-in-pkts-after-test.txt'
 
 #*** File to write traffic treatment time to:
 FILENAME_TT = 'post_process_treatment_time_delta.txt'
-#*** File to write DPAE packet count to:
+
+#*** File to write DPAE packet count from flow entry counters to:
 FILENAME_DPAE_PKTS = 'post_process_dpae_pkts.txt'
+
+#*** File to write DPAE packet count from interface counters to:
+FILENAME_DPAE_INTERFACE_PKTS = 'post_process_dpae_interface_pkts.txt'
+
 #*** File to write errors to:
 FILENAME_ERROR = 'error.txt'
 
@@ -92,13 +99,23 @@ def main():
         write_error("Error: iperf_starttime=" + str(iperf_starttime) + \
                     " treatment_time=" + str(treatment_time))
 
-    #*** Get the number of packets sent to the DPAE:
+    #*** Get the number of packets sent to the DPAE as per switch flow:
+    # (which sometimes tells lies in passive mode... beware...)
     packets_to_dpae = get_packets_to_dpae()
     if packets_to_dpae:
         #*** Write to file:
         write_result(FILENAME_DPAE_PKTS, packets_to_dpae)
     else:
         write_error("Error: packets_to_dpae is zero")
+
+    #*** Calculate the packets to DPAE from it's interface counters:
+    # (which will slightly overread...)
+    dpae_interface_pkts = get_dpae_interface_pkts()
+    if dpae_interface_pkts:
+        #*** Write to file:
+        write_result(FILENAME_DPAE_INTERFACE_PKTS, dpae_interface_pkts)
+    else:
+        write_error("Error: dpae_interface_pkts is zero")
 
 def get_iperf_starttime():
     """
@@ -168,6 +185,7 @@ def check_snoop_line(snoop_line, timezone):
 def get_packets_to_dpae():
     """
     Return the number of packets sent to DPAE for classification
+    as per the OVS flow table
     """
     pkts2dpae = 0
     #*** Read in the flow table:
@@ -204,6 +222,42 @@ def check_dpae_pkts(ft_line):
         if flow_table == FT_TC and priority == FT_DPAE_PRIORITY:
             return packets
     return 0
+
+def get_dpae_interface_pkts():
+    """
+    Return the number of packets sent to DPAE for classification
+    as per the DPAE interface counter increment for RX packets
+    """
+    dpae_pkts_in = 0
+    dpae_pkts_in_b4 = 0
+    dpae_pkts_in_after = 0
+    #*** Read in the interface counters:
+    filename_b4 = os.path.join(TEST_DIR, FILENAME_DPAE_PKTS_B4)
+    filename_after = os.path.join(TEST_DIR, FILENAME_DPAE_PKTS_AFTER)
+    dpae_pkts_in_b4 = get_pkt_counters(filename_b4)
+    dpae_pkts_in_after = get_pkt_counters(filename_after)
+    dpae_pkts_in = dpae_pkts_in_after - dpae_pkts_in_b4
+    if dpae_pkts_in > 0:
+        return dpae_pkts_in 
+    else:
+        print("WARNING: failed to find DPAE interface packets in")
+        return 0
+
+def get_pkt_counters(filename):
+    """
+    Passed a filename. Open it and return the packet counter value
+    or 0 if failed.
+    Example line:
+              RX packets:121335 errors:386 dropped:784 overruns:0 frame:0
+    """
+    interface_counter = 0
+    with open(filename, 'r') as f:
+        interface_line = f.readline()
+        counter_match = \
+                re.search(r"\s+RX\spackets\:(\d+)", interface_line)
+        if counter_match:
+            interface_counter = int(counter_match.group(1))
+    return interface_counter
 
 def write_result(filename, value):
     """

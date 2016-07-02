@@ -103,6 +103,9 @@
       command: "pgrep -f nmeta2.py"
       when: start_nmeta2
 
+    - name: Create server results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
     - name: Pause to allow time for switch to connect to controller
       pause: seconds=8
       
@@ -147,6 +150,17 @@
       command: "pgrep -f nmeta2dpae.py"
       when: start_nmeta2
 
+    - name: Pause to allow time for DPAE to connect to Controller
+      pause: seconds=10
+
+    - name: Create server results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - name: DPAE sniff interface packets before test
+      shell: "ifconfig eth1 | grep \"RX packets\" > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-in-pkts-b4-test.txt"
+
+    - name: Retrieve DPAE sniff interface packets
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-in-pkts-b4-test.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Set up monitoring on the switch for flow table modification timestamps:
 
@@ -177,12 +191,12 @@
       shell: "ping -c 1 sv1"
 
     - name: Pause to allow time for MAC learning
-      pause: seconds=4
+      pause: seconds=3
 
-    - name: run tcpdump in background for set number of packets with overview to file
-      shell: "nohup sudo tcpdump -i eth1 -c 20 > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-tcpdump.txt 2>&1 &"
-      async: 90000
-      poll: 0
+    #- name: run tcpdump in background for set number of packets with overview to file
+    #  shell: "nohup sudo tcpdump -i eth1 -c 20 > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-tcpdump.txt 2>&1 &"
+    #  async: 90000
+    #  poll: 0
 
     - name: Run Iperf tcp-5555 test from Client
       shell: "~/testtools/tosc/tosc.py {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_starttime.txt 'iperf -c sv1 -p 5555 -t {{ duration }} -y c > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt' {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-iperf_endtime.txt"
@@ -196,8 +210,19 @@
     - name: Retrieve Iperf results
       fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-5555-iperf_result.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
 
-    - name: Retrieve tcpdump results
-      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-tcpdump.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+    #- name: Retrieve tcpdump results
+    #  fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-tcpdump.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+#*** Get Data Plane Auxiliary Engine interface counters:
+- hosts: dpae
+
+  tasks:
+
+    - name: DPAE sniff interface packets after test
+      shell: "ifconfig eth1 | grep \"RX packets\" > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-in-pkts-after-test.txt"
+
+    - name: Retrieve DPAE sniff interface packets
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-in-pkts-after-test.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Dump and retrieve the Switch Flow Table for the record:
 
@@ -248,6 +273,14 @@
 
   tasks:
 
+    - name: Export tail of Controller nmeta2 App log
+      shell: "tail -300 /var/log/nmeta > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-applog.txt"
+      when: start_nmeta2
+
+    - name: Retrieve Controller nmeta2 App log
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-applog.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
     - name: Kill controller ryu processes (nmeta or simple switch etc)
       command: "sudo pkill -f ryu-manager"
       ignore_errors: True
@@ -262,6 +295,14 @@
 - hosts: dpae
 
   tasks:
+
+    - name: Export tail of DPAE log
+      shell: "tail -300 /var/log/nmeta > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-applog.txt"
+      when: start_nmeta2
+
+    - name: Retrieve DPAE log
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-applog.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
 
     - name: Kill nmeta2dpae processes
       command: "sudo pkill -f nmeta2dpae.py"
