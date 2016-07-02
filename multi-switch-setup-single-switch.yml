@@ -15,7 +15,7 @@
       command: "sudo ip link set dev eth1 up"
 
     - name: eth2 down
-      command: "sudo ip link set dev eth1 down"
+      command: "sudo ip link set dev eth2 down"
 
     - name: eth3 up
       command: "sudo ip link set dev eth3 up"
