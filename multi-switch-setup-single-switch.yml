@@ -4,7 +4,9 @@
 #*** Version 0.1.0
 
 #*** Configure the multi-switch lab for a single-switch test
-#***  by setting appropriate interfaces up/down:
+#***  by setting appropriate interfaces up/down.
+#***  Note that it is really important to get this right as
+#***  otherwise loops can form which will put switches to 100% CPU
 
 #*** Switch 1:
 - hosts: switch1
@@ -29,6 +31,9 @@
     - name: eth7 up
       command: "sudo ip link set dev eth7 up"
 
+    - name: Set OpenFlow Controller On
+      command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
+
 #*** Switch 2:
 - hosts: switch2
 
@@ -36,6 +41,9 @@
 
     - name: eth3 down
       command: "sudo ip link set dev eth3 down"
+
+    - name: Set OpenFlow Controller Off
+      command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
 
 #*** Switch 3:
 - hosts: switch3
@@ -45,6 +53,9 @@
     - name: eth3 down
       command: "sudo ip link set dev eth3 down"
 
+    - name: Set OpenFlow Controller Off
+      command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
+
 #*** Switch 4:
 - hosts: switch4
 
@@ -53,6 +64,9 @@
     - name: eth3 down
       command: "sudo ip link set dev eth3 down"
 
+    - name: Set OpenFlow Controller Off
+      command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
+
 #*** Switch n:
 - hosts: switchn
 
@@ -60,6 +74,9 @@
 
     - name: eth3 down
       command: "sudo ip link set dev eth3 down"
+
+    - name: Set OpenFlow Controller Off
+      command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
 
 - hosts: clients
 
