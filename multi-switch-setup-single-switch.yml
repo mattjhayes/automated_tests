@@ -36,3 +36,11 @@
     #*** Bail out of test if PING fails:
     - name: send PING to server to check connectivity
       shell: "ping -c 1 sv1"
+
+- hosts: load-generators
+
+  tasks:
+
+    #*** Bail out of test if PING fails:
+    - name: send PING to server to check connectivity
+      shell: "ping -c 1 lr1"
