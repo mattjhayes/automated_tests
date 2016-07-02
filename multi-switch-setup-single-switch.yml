@@ -29,6 +29,38 @@
     - name: eth7 up
       command: "sudo ip link set dev eth7 up"
 
+#*** Switch 2:
+- hosts: switch2
+
+  tasks:
+
+    - name: eth3 down
+      command: "sudo ip link set dev eth3 down"
+
+#*** Switch 3:
+- hosts: switch3
+
+  tasks:
+
+    - name: eth3 down
+      command: "sudo ip link set dev eth3 down"
+
+#*** Switch 4:
+- hosts: switch4
+
+  tasks:
+
+    - name: eth3 down
+      command: "sudo ip link set dev eth3 down"
+
+#*** Switch n:
+- hosts: switchn
+
+  tasks:
+
+    - name: eth3 down
+      command: "sudo ip link set dev eth3 down"
+
 - hosts: clients
 
   tasks:
