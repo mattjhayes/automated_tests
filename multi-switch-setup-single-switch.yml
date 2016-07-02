@@ -1,0 +1,38 @@
+---
+#- name: Multi-Switch Single Switch Setup
+
+#*** Version 0.1.0
+
+#*** Configure the multi-switch lab for a single-switch test
+#***  by setting appropriate interfaces up/down:
+
+#*** Switch 1:
+- hosts: switch1
+
+  tasks:
+
+    - name: eth1 up
+      command: "sudo ip link set dev eth1 up"
+
+    - name: eth2 down
+      command: "sudo ip link set dev eth1 down"
+
+    - name: eth3 up
+      command: "sudo ip link set dev eth3 up"
+
+    - name: eth5 up
+      command: "sudo ip link set dev eth5 up"
+
+    - name: eth6 down
+      command: "sudo ip link set dev eth6 down"
+
+    - name: eth7 up
+      command: "sudo ip link set dev eth7 up"
+
+- hosts: clients
+
+  tasks:
+
+    #*** Bail out of test if PING fails:
+    - name: send PING to server to check connectivity
+      shell: "ping -c 1 sv1"
