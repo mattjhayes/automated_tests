@@ -16,23 +16,42 @@
     - name: eth1 up
       command: "sudo ip link set dev eth1 up"
 
+    - name: eth1 OVS add
+      command: "sudo ovs-vsctl add-port br0 eth1"
+
     - name: eth2 down
       command: "sudo ip link set dev eth2 down"
+
+    - name: eth2 OVS del
+      command: "sudo ovs-vsctl del-port br0 eth2"
 
     - name: eth3 up
       command: "sudo ip link set dev eth3 up"
 
+    - name: eth3 OVS add
+      command: "sudo ovs-vsctl add-port br0 eth3"
+
     - name: eth5 up
       command: "sudo ip link set dev eth5 up"
+
+    - name: eth5 OVS add
+      command: "sudo ovs-vsctl add-port br0 eth5"
 
     - name: eth6 down
       command: "sudo ip link set dev eth6 down"
 
+    - name: eth6 OVS del
+      command: "sudo ovs-vsctl del-port br0 eth6"
+
     - name: eth7 up
       command: "sudo ip link set dev eth7 up"
 
+    - name: eth7 OVS add
+      command: "sudo ovs-vsctl add-port br0 eth7"
+
     - name: Set OpenFlow Controller On
       command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
+
 
 #*** Switch 2:
 - hosts: switch2
