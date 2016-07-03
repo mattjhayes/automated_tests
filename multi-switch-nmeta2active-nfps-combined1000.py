@@ -90,14 +90,17 @@ for i in range(repeats):
         test_dir=os.path.join(test_basedir, test)
         #*** Set switches up appropriate to test type:
         if test == "single":
-            result = os.system("ansible-playbook playbook_single_switch")
+            playbook_cmd = "ansible-playbook " + playbook_single_switch
+            result = os.system(playbook_cmd)
             print "single switch setup result is", result
         elif test == "dual":
-            result = os.system("ansible-playbook playbook_dual_switch")
+            playbook_cmd = "ansible-playbook " + playbook_dual_switch
+            result = os.system(playbook_cmd)
             print "dual switch setup result is", result
         else:
             print "ERROR: unknown test type", test
             sys.exit()
+        playbook_cmd = ""
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
         playbook_cmd += "\"start_nmeta=" + start_nmeta
         playbook_cmd += " start_nmeta2=" + start_nmeta2
