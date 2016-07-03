@@ -52,9 +52,13 @@ max_rate_warmup = "1000"
 flow_inc_warmup = "10"
 incr_interval_warmup = "1"
 
-#*** Ansible Playbook to use:
+#*** Ansible Playbooks to use:
 playbook = os.path.join(home_dir, \
             "automated_tests/nfps-load-tests-template.yml")
+playbook_single_switch = os.path.join(home_dir, \
+            "automated_tests/multi-switch-setup-single-switch.yml")
+playbook_dual_switch = os.path.join(home_dir, \
+            "automated_tests/multi-switch-setup-dual-switch.yml")
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -86,10 +90,10 @@ for i in range(repeats):
         test_dir=os.path.join(test_basedir, test)
         #*** Set switches up appropriate to test type:
         if test == "single":
-            result = os.system("ansible-playbook multi-switch-setup-single-switch.yml")
+            result = os.system("ansible-playbook playbook_single_switch")
             print "single switch setup result is", result
         elif test == "dual":
-            result = os.system("ansible-playbook multi-switch-setup-dual-switch.yml")
+            result = os.system("ansible-playbook playbook_dual_switch")
             print "dual switch setup result is", result
         else:
             print "ERROR: unknown test type", test
