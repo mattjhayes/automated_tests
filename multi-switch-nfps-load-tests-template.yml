@@ -1,0 +1,519 @@
+---
+#- name: Multi-switch NFPS (New Flows Per Second) Load Test Template Playbook
+
+#*** Version 0.1.0
+
+#*** Pass variables on the command line to determine the test type:
+#
+#*** Example nmeta2 active nfps load test:
+#***   ansible-playbook ~/automated_tests/multi-switch-nfps-load-tests-template.yml --extra-vars "start_nmeta=false start_nmeta2=true start_simple_switch=false nmeta2_mode=active start_dpn=1 results_dir=~/results/nfps-load-tests/nmeta2-combined/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=1000 flow_inc=10 incr_interval=1 proto=6 dport=12345 algorithm=make-good"
+#
+
+#*** Remember to start w80 on server first... This script does not automatically start it...
+
+- hosts: servers
+
+  tasks:
+
+    - name: Doublecheck that webserver is running
+      command: "pgrep -f websvr.py"
+
+    - name: Record input variables to file for the record
+      copy: content="nfps-load-tests-template.yml was run with start_nmeta={{ start_nmeta }} start_nmeta2={{ start_nmeta2 }} start_simple_switch={{ start_simple_switch }} nmeta2_mode={{ nmeta2_mode }}results_dir={{ results_dir }} target_ip={{ target_ip }} target_mac={{ target_mac }} interface={{ interface }} initial_rate={{ initial_rate }} max_rate={{ max_rate }} flow_inc={{ flow_inc }} proto={{ proto }} dport={{ dport }} algorithm={{ algorithm }}" dest=/tmp/nfps-load-tests-template.yml.parameters.txt
+
+#*** Start by ensuring no test processes are already running:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill controller hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+#*** Data Plane Auxiliary Engine, when doing nmeta2 - process clean-up:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+#*** Data Plane Auxiliary Engine n, process clean-up:
+- hosts: dpn
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+      when: start_dpn
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_dpn
+
+#*** Client process clean-up:
+- hosts: clients
+
+  tasks:
+
+    - name: Kill client hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+#*** Load Generator process clean-up:
+- hosts: load-generators
+
+  tasks:
+
+    - name: Kill load generator filt processes
+      command: "sudo pkill -f filt"
+      ignore_errors: True
+
+#*** Switch process clean-up:
+- hosts: switches
+
+  tasks:
+
+    - name: Kill switch mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+#*** Now start the main work of the playbook:
+      
+#*** Start Ryu on controller (if required) with appropriate app
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Copy NFPS main config file into place
+      command: "cp ~/nmeta/config/tests/nfps_load/main_policy_nfps_load.yaml ~/nmeta/config/main_policy.yaml"
+      when: start_nmeta
+
+    - name: Copy static regression qos config file into place
+      command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
+      when: start_nmeta
+
+    - name: Copy standard config file into place
+      command: "cp ~/nmeta/config/tests/config_standard.yaml ~/nmeta/config/config.yaml"
+      when: start_nmeta
+
+    - name: Copy NFPS main config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/nfps_load/main_policy_nfps_load.yaml ~/nmeta2/nmeta2/config/main_policy.yaml"
+      when: start_nmeta2 and nmeta2_mode == "active"
+
+    - name: Copy NFPS main config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/nfps_load/main_policy_nfps_load_passive.yaml ~/nmeta2/nmeta2/config/main_policy.yaml"
+      when: start_nmeta2 and nmeta2_mode == "passive"
+
+    - name: Copy standard config file into place
+      command: "cp ~/nmeta2/nmeta2/config/tests/config_standard.yaml ~/nmeta2/nmeta2/config/config.yaml"
+      when: start_nmeta2
+
+    - name: Set PYTHONPATH environment variable
+      shell: "PYTHONPATH=."
+      args:
+        chdir: ~/ryu
+
+    - name: Run Ryu with nmeta (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+    - name: Run Ryu with nmeta2 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta2/nmeta2/nmeta2.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Run Ryu with simple switch OFv1.3 (if required) on controller in the background
+      shell: "nohup ~/ryu/bin/ryu-manager ~/ryu/ryu/app/simple_switch_13.py &"
+      args:
+        chdir: ~/ryu
+      async: 90000
+      poll: 0
+      when: start_simple_switch
+
+    - name: Doublecheck that simple switch is running
+      command: "pgrep -f simple_switch_13.py"
+      when: start_simple_switch
+
+    - name: Doublecheck that nmeta is running
+      command: "pgrep -f nmeta.py"
+      when: start_nmeta
+
+    - name: Doublecheck that nmeta2 is running
+      command: "pgrep -f nmeta2.py"
+      when: start_nmeta2
+
+#*** Data Plane Auxiliary Engine, when doing nmeta2:
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Run nmeta2dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+    - name: Pause to allow time for DPAE to connect to controller
+      pause: seconds=15
+      when: start_nmeta2
+
+    - name: Doublecheck that nmeta2dpae.py is running
+      command: "pgrep -f nmeta2dpae.py"
+      when: start_nmeta2
+
+#*** Data Plane Auxiliary Engine n:
+- hosts: dpn
+
+  tasks:
+
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_dpn
+
+    - name: Run nmeta2dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+      when: start_dpn
+
+    - name: Pause to allow time for DPAE to connect to controller
+      pause: seconds=15
+      when: start_dpn
+
+    - name: Doublecheck that nmeta2dpae.py is running
+      command: "pgrep -f nmeta2dpae.py"
+      when: start_dpn
+
+#*** Run monitoring and tests on the client(s):
+- hosts: clients
+
+  tasks:
+
+    - name: Generate global results timestamp variable
+      local_action: shell date +%Y%m%d%H%M%S
+      register: results_timestamp
+      run_once: true
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ results_timestamp.stdout }}"
+
+    - debug: msg="Creating local and remote result folders..."
+
+    - name: Create local results folder
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      register: create_local_results_folder
+      run_once: true
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - name: Create a text file of playbook YAML for the record
+      local_action: shell cp ~/automated_tests/nfps-load-tests-template.yml {{ results_dir }}{{ results_timestamp.stdout }}/playbook.txt
+      run_once: true
+
+    - debug: msg="Starting client hort tests..."
+
+    - name: Create client hort version text file
+      shell: "python ~/testtools/hort/hort.py --version > {{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt"
+
+    - name: Retrieve client hort version text
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-version.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Run client hort cxn-close tests in background
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index_small.html --elapsed-time --no-keepalive --output-file {{ inventory_hostname }}-hort-cxn-close.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
+    - name: Run client hort cxn-keep-alive tests in background
+      command: "nohup python ~/testtools/hort/hort.py --url http://sv1.example.com/static/index_small.html --elapsed-time --output-file {{ inventory_hostname }}-hort-cxn-keepalive.csv --output-path {{ results_dir }}{{ results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
+#*** Run OS monitoring on the DPAE(es)
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Create dpae results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+      when: start_nmeta2
+
+    - name: Create dpae mosp version text file
+      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+      when: start_nmeta2
+
+    - name: Retrieve dpae mosp version text
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
+    - name: Run dpae mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+      when: start_nmeta2
+
+#*** Run OS monitoring on the switch(es)
+
+- hosts: switches
+
+  tasks:
+
+    - debug: msg="Creating switch result folder..."
+
+    - name: Create switch results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - debug: msg="Starting switch mosp performance monitoring..."
+
+    - name: Create switch mosp version text file
+      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+
+    - name: Retrieve switch mosp version text
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Run switch mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
+#*** Run monitoring on the controller
+
+- hosts: controllers
+
+  tasks:
+
+    - debug: msg="Creating controller result folder..."
+
+    - name: Create controller results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - debug: msg="Starting controller mosp performance monitoring..."
+
+    - name: Create controller mosp version text file
+      shell: "python ~/testtools/mosp/mosp.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt"
+
+    - name: Retrieve controller mosp version text
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Run controller mosp performance monitoring in the background
+      command: "nohup python ~/testtools/mosp/mosp.py --output-file {{ inventory_hostname }}-mosp.csv --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+
+    - name: Run controller nmeta event rate performance monitoring in the background
+      command: "nohup python ~/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-eventrates.csv --url http://localhost:8080/nmeta/measurement/eventrates/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+    - name: Run controller nmeta event rate performance monitoring in the background
+      command: "nohup python ~/testtools/hort/hort.py --output-file {{ inventory_hostname }}-hort-nmeta-packet_time.csv --url http://localhost:8080/nmeta/measurement/metrics/packet_time/ --log-object-data --parse-json --kvp --no-header-row --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ &"
+      async: 90000
+      poll: 0
+      when: start_nmeta
+
+#*** Fire up the load generator...
+
+- hosts: load-generators
+
+  tasks:
+    - debug: msg="Starting Load Generator tasks..."
+
+    - debug: msg="Result folder will be {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}"
+
+    - name: Create client results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+      register: create_client_results_folder
+
+    - debug: msg="Creating and retrieving filt version text"
+
+    - name: Create filt version text file
+      shell: "sudo ~/testtools/filt/filt.py --version > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt"
+
+    - name: Retrieve filt version file
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-version.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Pause to allow time for CPU on guests to settle down post monitoring start
+      pause: seconds=5
+
+      #*** Regular PING important as Load Reflector does not return load packets
+      #***  so if MAC not known then packets to it will be flooded:
+    - name: PING the Load Reflector in background so that Controller sees packet-in of response and has in MAC table
+      shell: "nohup ping -c 1000 -i 5 10.1.0.7 &"
+      async: 90000
+      poll: 0
+
+    - debug: msg="Starting filt make-good tests..."
+
+    - name: Run the filt load tests
+      shell: "sudo ~/testtools/filt/filt.py --target-ip {{ target_ip }}  --target-mac {{ target_mac }} --interface {{ interface }} --bypass-warn --max-flow-rate {{ max_rate }} --flow-rate-increase {{ flow_inc }} --increment-interval {{ incr_interval }} --protocol {{ proto }} --dport {{ dport }} --initial-flow-rate {{ initial_rate }} --elapsed-time --output-file {{ inventory_hostname }}-filt-{{ algorithm }}.csv --algorithm {{ algorithm }} --output-path {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/"
+
+    - name: Sleep for a bit to let normality return after load test
+      local_action: shell sleep 15
+      run_once: true
+
+    - name: Retrieve filt test results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-filt-{{ algorithm }}.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Dump and retrieve the Switch Flow Table for the record:
+
+- hosts: switches
+
+  tasks:
+
+    - name: Create switch results folder
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
+
+    - name: Dump the Switch Flow Table
+      shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt"
+
+    - name: Retrieve the Switch Flow Table
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Stop hort on clients and retrieve results:
+
+- hosts: clients
+
+  tasks:
+
+    - name: Check client hort processes
+      command: "pgrep -f hort"
+      ignore_errors: True
+
+    - name: Kill client hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+    - name: Retrieve client hort connection keepalive results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-cxn-keepalive.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve client hort connection close results
+      fetch: src={{ results_dir }}{{ results_timestamp.stdout }}/{{ inventory_hostname }}-hort-cxn-close.csv dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
+
+#*** Stop mosp and hort on controller and retrieve results:
+
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+    - name: Kill controller hort processes
+      command: "sudo pkill -f hort"
+      ignore_errors: True
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True
+
+    - name: Retrieve controller mosp performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+    - name: Retrieve controller hort nmeta event rate performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-hort-nmeta-eventrates.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
+
+    - name: Retrieve controller hort nmeta processing time performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-hort-nmeta-packet_time.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
+
+#*** Stop nmeta_dpae and mosp on DPAE(es) and retrieve results:
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Kill dpae nmeta2dpae process
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Retrieve DPAE mosp performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
+#*** Stop mosp switch(es) and retrieve results:
+
+- hosts: switches
+
+  tasks:
+
+    - name: Kill switch mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+
+    - name: Retrieve switch mosp performance results
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Retrieve file that holds parameters that test was called with:
+
+- hosts: servers
+
+  tasks:
+
+    - name: Retrieve input variables file
+      fetch: src=/tmp/nfps-load-tests-template.yml.parameters.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+
+#*** Retrieve copy of main policy file that was used:
+- hosts: controllers
+
+  tasks:
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta
+
+    - name: Retrieve the main policy file
+      fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
+#*** Finish by stopping any Ryu processes:
+- hosts: controllers
+
+  tasks:
+
+    - name: Kill controller ryu processes (nmeta or simple switch etc)
+      command: "sudo pkill -f ryu-manager"
+      ignore_errors: True

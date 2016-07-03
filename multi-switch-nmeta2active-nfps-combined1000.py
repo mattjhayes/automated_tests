@@ -16,13 +16,17 @@
 """
 Run baseline tests
 """
+
+#*** For writing to file:
+from __future__ import print_function
+
 import datetime
 import time
 import os
 from os.path import expanduser
 import sys
 
-version = "0.1.0"
+version = "0.1.1"
 
 #*** How many times to run the set of tests:
 repeats = 3
@@ -33,6 +37,9 @@ tests = ["single", "dual"]
 #*** Directory base path to write results to:
 home_dir = expanduser("~")
 results_dir = os.path.join(home_dir, "results/nfps-load-tests/multi-switch-nmeta2active/")
+
+#*** Filenames for test suite output into test root directory:
+FILENAME_SWITCH_SETUP_RESULTS = "switch_topology_setup_results.csv"
 
 #*** Parameters for filt new flow rate load test:
 target_ip = "10.1.0.7"
@@ -54,7 +61,7 @@ incr_interval_warmup = "1"
 
 #*** Ansible Playbooks to use:
 playbook = os.path.join(home_dir, \
-            "automated_tests/nfps-load-tests-template.yml")
+            "automated_tests/multi-switch-nfps-load-tests-template.yml")
 playbook_single_switch = os.path.join(home_dir, \
             "automated_tests/multi-switch-setup-single-switch.yml")
 playbook_dual_switch = os.path.join(home_dir, \
@@ -63,16 +70,16 @@ playbook_dual_switch = os.path.join(home_dir, \
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
 timestamp = timenow.strftime("%Y%m%d%H%M%S")
-print "timestamp is", timestamp
+print ("timestamp is", timestamp)
 
 #*** Create root directory for results:
 os.chdir(results_dir)
 os.mkdir(timestamp)
-test_basedir = os.path.join(results_dir, timestamp)
-print "test_basedir is", test_basedir
+TEST_BASEDIR = os.path.join(results_dir, timestamp)
+print ("TEST_BASEDIR is", TEST_BASEDIR)
 
 #*** Create sub folders
-os.chdir(test_basedir)
+os.chdir(TEST_BASEDIR)
 for test in tests:
     os.mkdir(test)
 
@@ -82,23 +89,29 @@ start_nmeta2 = "true"
 nmeta2_mode = "active"
 start_simple_switch = "false"
 
+#*** Start DPAE n (dpn) in tests that have multiple switches:
+start_dpn = 0
+
 #*** Run tests
 for i in range(repeats):
     for test in tests:
-        print "running test", test, "test suite iteration", i+1, "of", \
-                                                            repeats
-        test_dir=os.path.join(test_basedir, test)
+        print ("running test", test, "test suite iteration", i+1, \
+                                                        "of", repeats)
+        test_dir=os.path.join(TEST_BASEDIR, test)
         #*** Set switches up appropriate to test type:
         if test == "single":
             playbook_cmd = "ansible-playbook " + playbook_single_switch
             result = os.system(playbook_cmd)
-            print "single switch setup result is", result
+            result = test,',',i+1,',',result
+            write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
         elif test == "dual":
             playbook_cmd = "ansible-playbook " + playbook_dual_switch
             result = os.system(playbook_cmd)
-            print "dual switch setup result is", result
+            result = test,',',i+1,',',result
+            write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+            start_dpn = 1
         else:
-            print "ERROR: unknown test type", test
+            print ("ERROR: unknown test type", test)
             sys.exit()
         playbook_cmd = ""
         playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
@@ -106,6 +119,7 @@ for i in range(repeats):
         playbook_cmd += " start_nmeta2=" + start_nmeta2
         playbook_cmd += " start_simple_switch=" + start_simple_switch
         playbook_cmd += " nmeta2_mode=" + nmeta2_mode
+        playbook_cmd += " start_dpn=" + start_dpn
         playbook_cmd += " results_dir=" + test_dir + "/"
         playbook_cmd += " target_ip=" + target_ip
         playbook_cmd += " target_mac=" + target_mac
@@ -118,10 +132,18 @@ for i in range(repeats):
         playbook_cmd += " dport=" + dport
         playbook_cmd += " algorithm=" + algorithm
         playbook_cmd += "\""
-        print "playbook_cmd is", playbook_cmd
+        print ("playbook_cmd is", playbook_cmd)
         
-        print "running Ansible playbook..."
+        print ("running Ansible playbook...")
         os.system(playbook_cmd)
-        print "Sleeping... zzzz"
+        print ("Sleeping... zzzz")
         time.sleep(30)
-        
+
+def write_result(filename, value):
+    """
+    Write a result value to a file (appends)
+    """
+    print ("Writing result", result, "to file")
+    result_filename = os.path.join(TEST_BASEDIR, filename)
+    with open(result_filename, 'a') as f:
+        print(value, file=f)
