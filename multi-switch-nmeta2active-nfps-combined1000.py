@@ -26,47 +26,6 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.1"
-
-#*** How many times to run the set of tests:
-repeats = 3
-
-#*** Types of tests to run (number of switches in path):
-tests = ["single", "dual"]
-
-#*** Directory base path to write results to:
-home_dir = expanduser("~")
-results_dir = os.path.join(home_dir, "results/nfps-load-tests/multi-switch-nmeta2active/")
-
-#*** Filenames for test suite output into test root directory:
-FILENAME_SWITCH_SETUP_RESULTS = "switch_topology_setup_results.csv"
-
-#*** Parameters for filt new flow rate load test:
-target_ip = "10.1.0.7"
-target_mac = "08:00:27:40:e4:4c"
-interface = "eth1"
-initial_rate = "10"
-max_rate = "1000"
-flow_inc = "10"
-incr_interval = "1"
-proto = "6"
-dport = "12345"
-algorithm = "make-good"
-
-#*** Parameters for the warmup:
-initial_rate_warmup = "500"
-max_rate_warmup = "1000"
-flow_inc_warmup = "10"
-incr_interval_warmup = "1"
-
-#*** Ansible Playbooks to use:
-playbook = os.path.join(home_dir, \
-            "automated_tests/multi-switch-nfps-load-tests-template.yml")
-playbook_single_switch = os.path.join(home_dir, \
-            "automated_tests/multi-switch-setup-single-switch.yml")
-playbook_dual_switch = os.path.join(home_dir, \
-            "automated_tests/multi-switch-setup-dual-switch.yml")
-
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
 timestamp = timenow.strftime("%Y%m%d%H%M%S")
@@ -78,72 +37,115 @@ os.mkdir(timestamp)
 TEST_BASEDIR = os.path.join(results_dir, timestamp)
 print ("TEST_BASEDIR is", TEST_BASEDIR)
 
-#*** Create sub folders
-os.chdir(TEST_BASEDIR)
-for test in tests:
-    os.mkdir(test)
+#*** Filenames for test suite output into test root directory:
+FILENAME_SWITCH_SETUP_RESULTS = "switch_topology_setup_results.csv"
 
-#*** Specific to running nmeta2 in active mode:
-start_nmeta = "false"
-start_nmeta2 = "true"
-nmeta2_mode = "active"
-start_simple_switch = "false"
+def main():
+    """
+    Main function
+    """
 
-#*** Start DPAE n (dpn) in tests that have multiple switches:
-start_dpn = 0
+    version = "0.1.1"
 
-#*** Run tests
-for i in range(repeats):
+    #*** How many times to run the set of tests:
+    repeats = 3
+
+    #*** Types of tests to run (number of switches in path):
+    tests = ["single", "dual"]
+
+    #*** Directory base path to write results to:
+    home_dir = expanduser("~")
+    results_dir = os.path.join(home_dir, "results/nfps-load-tests/multi-switch-nmeta2active/")
+
+    #*** Parameters for filt new flow rate load test:
+    target_ip = "10.1.0.7"
+    target_mac = "08:00:27:40:e4:4c"
+    interface = "eth1"
+    initial_rate = "10"
+    max_rate = "1000"
+    flow_inc = "10"
+    incr_interval = "1"
+    proto = "6"
+    dport = "12345"
+    algorithm = "make-good"
+
+    #*** Ansible Playbooks to use:
+    playbook = os.path.join(home_dir, \
+            "automated_tests/multi-switch-nfps-load-tests-template.yml")
+    playbook_single_switch = os.path.join(home_dir, \
+            "automated_tests/multi-switch-setup-single-switch.yml")
+    playbook_dual_switch = os.path.join(home_dir, \
+            "automated_tests/multi-switch-setup-dual-switch.yml")
+
+    #*** Create sub folders
+    os.chdir(TEST_BASEDIR)
     for test in tests:
-        print ("running test", test, "test suite iteration", i+1, \
+        os.mkdir(test)
+
+    #*** Specific to running nmeta2 in active mode:
+    start_nmeta = "false"
+    start_nmeta2 = "true"
+    nmeta2_mode = "active"
+    start_simple_switch = "false"
+
+    #*** Start DPAE n (dpn) in tests that have multiple switches:
+    start_dpn = 0
+    
+    #*** Run tests
+    for i in range(repeats):
+        for test in tests:
+            print ("running test", test, "test suite iteration", i+1, \
                                                         "of", repeats)
-        test_dir=os.path.join(TEST_BASEDIR, test)
-        #*** Set switches up appropriate to test type:
-        if test == "single":
-            playbook_cmd = "ansible-playbook " + playbook_single_switch
-            result = os.system(playbook_cmd)
-            result = test,',',i+1,',',result
-            write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
-        elif test == "dual":
-            playbook_cmd = "ansible-playbook " + playbook_dual_switch
-            result = os.system(playbook_cmd)
-            result = test,',',i+1,',',result
-            write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
-            start_dpn = 1
-        else:
-            print ("ERROR: unknown test type", test)
-            sys.exit()
-        playbook_cmd = ""
-        playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
-        playbook_cmd += "\"start_nmeta=" + start_nmeta
-        playbook_cmd += " start_nmeta2=" + start_nmeta2
-        playbook_cmd += " start_simple_switch=" + start_simple_switch
-        playbook_cmd += " nmeta2_mode=" + nmeta2_mode
-        playbook_cmd += " start_dpn=" + start_dpn
-        playbook_cmd += " results_dir=" + test_dir + "/"
-        playbook_cmd += " target_ip=" + target_ip
-        playbook_cmd += " target_mac=" + target_mac
-        playbook_cmd += " interface=" + interface
-        playbook_cmd += " initial_rate=" + initial_rate
-        playbook_cmd += " max_rate=" + max_rate
-        playbook_cmd += " flow_inc=" + flow_inc
-        playbook_cmd += " incr_interval=" + incr_interval
-        playbook_cmd += " proto=" + proto
-        playbook_cmd += " dport=" + dport
-        playbook_cmd += " algorithm=" + algorithm
-        playbook_cmd += "\""
-        print ("playbook_cmd is", playbook_cmd)
-        
-        print ("running Ansible playbook...")
-        os.system(playbook_cmd)
-        print ("Sleeping... zzzz")
-        time.sleep(30)
+            test_dir = os.path.join(TEST_BASEDIR, test)
+            #*** Set switches up appropriate to test type:
+            if test == "single":
+                playbook_cmd = "ansible-playbook " + playbook_single_switch
+                result = os.system(playbook_cmd)
+                result = test, ',', i+1, ',', result
+                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+            elif test == "dual":
+                playbook_cmd = "ansible-playbook " + playbook_dual_switch
+                result = os.system(playbook_cmd)
+                result = test, ',', i+1, ',', result
+                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+                start_dpn = 1
+            else:
+                print ("ERROR: unknown test type", test)
+                sys.exit()
+            playbook_cmd = ""
+            playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
+            playbook_cmd += "\"start_nmeta=" + start_nmeta
+            playbook_cmd += " start_nmeta2=" + start_nmeta2
+            playbook_cmd += " start_simple_switch=" + start_simple_switch
+            playbook_cmd += " nmeta2_mode=" + nmeta2_mode
+            playbook_cmd += " start_dpn=" + start_dpn
+            playbook_cmd += " results_dir=" + test_dir + "/"
+            playbook_cmd += " target_ip=" + target_ip
+            playbook_cmd += " target_mac=" + target_mac
+            playbook_cmd += " interface=" + interface
+            playbook_cmd += " initial_rate=" + initial_rate
+            playbook_cmd += " max_rate=" + max_rate
+            playbook_cmd += " flow_inc=" + flow_inc
+            playbook_cmd += " incr_interval=" + incr_interval
+            playbook_cmd += " proto=" + proto
+            playbook_cmd += " dport=" + dport
+            playbook_cmd += " algorithm=" + algorithm
+            playbook_cmd += "\""
+            print ("playbook_cmd is", playbook_cmd)
+
+            print ("running Ansible playbook...")
+            os.system(playbook_cmd)
+            print ("Sleeping... zzzz")
+            time.sleep(30)
 
 def write_result(filename, value):
     """
     Write a result value to a file (appends)
     """
-    print ("Writing result", result, "to file")
+    print ("Writing result", value, "to file")
     result_filename = os.path.join(TEST_BASEDIR, filename)
     with open(result_filename, 'a') as f:
         print(value, file=f)
+
+if __name__ == '__main__':
+    main()
