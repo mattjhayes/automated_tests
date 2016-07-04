@@ -26,36 +26,38 @@ import os
 from os.path import expanduser
 import sys
 
+version = "0.1.1"
+
+#*** How many times to run the set of tests:
+REPEATS = 3
+
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
-timestamp = timenow.strftime("%Y%m%d%H%M%S")
-print ("timestamp is", timestamp)
+TIMESTAMP = timenow.strftime("%Y%m%d%H%M%S")
+print ("timestamp is", TIMESTAMP)
+
+#*** Directory base path to write results to:
+HOME_DIR = expanduser("~")
+RESULTS_DIR = os.path.join(HOME_DIR,
+                   "results/nfps-load-tests/multi-switch-nmeta2active/")
 
 #*** Create root directory for results:
-os.chdir(results_dir)
-os.mkdir(timestamp)
-TEST_BASEDIR = os.path.join(results_dir, timestamp)
+os.chdir(RESULTS_DIR)
+os.mkdir(TIMESTAMP)
+TEST_BASEDIR = os.path.join(RESULTS_DIR, TIMESTAMP)
 print ("TEST_BASEDIR is", TEST_BASEDIR)
 
 #*** Filenames for test suite output into test root directory:
 FILENAME_SWITCH_SETUP_RESULTS = "switch_topology_setup_results.csv"
+
 
 def main():
     """
     Main function
     """
 
-    version = "0.1.1"
-
-    #*** How many times to run the set of tests:
-    repeats = 3
-
     #*** Types of tests to run (number of switches in path):
     tests = ["single", "dual"]
-
-    #*** Directory base path to write results to:
-    home_dir = expanduser("~")
-    results_dir = os.path.join(home_dir, "results/nfps-load-tests/multi-switch-nmeta2active/")
 
     #*** Parameters for filt new flow rate load test:
     target_ip = "10.1.0.7"
@@ -70,11 +72,11 @@ def main():
     algorithm = "make-good"
 
     #*** Ansible Playbooks to use:
-    playbook = os.path.join(home_dir, \
+    playbook = os.path.join(HOME_DIR, \
             "automated_tests/multi-switch-nfps-load-tests-template.yml")
-    playbook_single_switch = os.path.join(home_dir, \
+    playbook_single_switch = os.path.join(HOME_DIR, \
             "automated_tests/multi-switch-setup-single-switch.yml")
-    playbook_dual_switch = os.path.join(home_dir, \
+    playbook_dual_switch = os.path.join(HOME_DIR, \
             "automated_tests/multi-switch-setup-dual-switch.yml")
 
     #*** Create sub folders
@@ -90,12 +92,12 @@ def main():
 
     #*** Start DPAE n (dpn) in tests that have multiple switches:
     start_dpn = 0
-    
+
     #*** Run tests
-    for i in range(repeats):
+    for i in range(REPEATS):
         for test in tests:
             print ("running test", test, "test suite iteration", i+1, \
-                                                        "of", repeats)
+                                                        "of", REPEATS)
             test_dir = os.path.join(TEST_BASEDIR, test)
             #*** Set switches up appropriate to test type:
             if test == "single":
