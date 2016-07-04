@@ -103,12 +103,12 @@ def main():
             if test == "single":
                 playbook_cmd = "ansible-playbook " + playbook_single_switch
                 result = os.system(playbook_cmd)
-                result = test, ',', i+1, ',', result
+                result = test + "," + i+1 + "," + str(result)
                 write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
             elif test == "dual":
                 playbook_cmd = "ansible-playbook " + playbook_dual_switch
                 result = os.system(playbook_cmd)
-                result = test, ',', i+1, ',', result
+                result = test + "," + i+1 + "," + str(result)
                 write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
                 start_dpn = 1
             else:
