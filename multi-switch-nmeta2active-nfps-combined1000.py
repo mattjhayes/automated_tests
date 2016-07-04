@@ -120,7 +120,7 @@ def main():
             playbook_cmd += " start_nmeta2=" + start_nmeta2
             playbook_cmd += " start_simple_switch=" + start_simple_switch
             playbook_cmd += " nmeta2_mode=" + nmeta2_mode
-            playbook_cmd += " start_dpn=" + start_dpn
+            playbook_cmd += " start_dpn=" + str(start_dpn)
             playbook_cmd += " results_dir=" + test_dir + "/"
             playbook_cmd += " target_ip=" + target_ip
             playbook_cmd += " target_mac=" + target_mac
