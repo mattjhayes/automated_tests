@@ -92,6 +92,14 @@
     - name: Set OpenFlow Controller Off
       command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
 
+#*** Switch 5:
+- hosts: switch5
+
+  tasks:
+
+    - name: Set OpenFlow Controller Off
+      command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
+
 #*** Switch n:
 - hosts: switchn
 
