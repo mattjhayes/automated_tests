@@ -135,12 +135,12 @@
 
     #*** Initial PING test with ignore errors to learn MAC:
     - name: Initial PING to server to learn MAC
-      shell: "ping -c 1 sv1"
+      command: "ping -c 1 sv1"
       ignore_errors: True
 
     #*** Bail out of test if PING fails:
     - name: Second PING to server to check connectivity
-      shell: "ping -c 3 -W 3 sv1"
+      command: "ping -c 3 -W 3 sv1"
       changed_when: false
 
 - hosts: load-generators
@@ -149,9 +149,10 @@
 
     #*** Initial PING to load reflector to learn MAC:
     - name: Initial PING to load reflector to learn MAC
-      shell: "ping -c 1 lr1"
+      command: "ping -c 1 lr1"
       ignore_errors: True
 
     #*** Bail out of test if PING fails:
     - name: Second PING to server to check connectivity
-      shell: "ping -c 3 -W 3 lr1"
+      command: "ping -c 3 -W 3 lr1"
+      changed_when: false
