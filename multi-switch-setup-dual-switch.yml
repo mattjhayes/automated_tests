@@ -1,5 +1,5 @@
 ---
-#- name: Multi-Switch Single Switch Setup
+#- name: Multi-Switch Dual Switch Setup
 
 #*** Version 0.1.0
 
@@ -134,12 +134,12 @@
   tasks:
 
     #*** Initial PING test with ignore errors to learn MAC:
-    - name: Initial PING to server to learn MAC
+    - name: pc1 Initial PING to server to learn MAC
       command: "ping -c 1 sv1"
       ignore_errors: True
 
     #*** Bail out of test if PING fails:
-    - name: Second PING to server to check connectivity
+    - name: pc1 Second PING to server to check connectivity
       command: "ping -c 3 -W 3 sv1"
       changed_when: false
 
@@ -148,11 +148,12 @@
   tasks:
 
     #*** Initial PING to load reflector to learn MAC:
-    - name: Initial PING to load reflector to learn MAC
+    - name: lg1 Initial PING to load reflector to learn MAC
       command: "ping -c 1 lr1"
       ignore_errors: True
 
     #*** Bail out of test if PING fails:
-    - name: Second PING to server to check connectivity
+    - name: lg1 Second PING to server to check connectivity
       command: "ping -c 3 -W 3 lr1"
       changed_when: false
+
