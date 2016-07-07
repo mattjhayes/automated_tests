@@ -15,7 +15,7 @@
 
 """
 Run performance (no load) tests against different numbers of
-in-path switches
+in-path switches, using a chosen controller app type.
 """
 
 #*** For writing to file:
@@ -32,8 +32,12 @@ version = "0.1.0"
 #*** How many times to run the set of tests:
 REPEATS = 3
 
-#*** Types of tests to run:
-TESTS = ["nmeta2-active", "nmeta2-passive", "nosdn"]
+#*** Type of controller app to use. Choose one of:
+# "nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"
+TEST_TYPE = "nosdn"
+
+#*** Types of tests to run (number of switches in path):
+TESTS = ["single", "dual"]
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -76,29 +80,45 @@ def main():
     for i in range(REPEATS):
         for test in TESTS:
             print ("running test", test, "test suite iteration", i+1, \
-                                                        "of", REPEATS)
+                              "of", REPEATS, "of test type ", TEST_TYPE)
             test_dir = os.path.join(TEST_BASEDIR, test)
-            if test == "nmeta":
+            #*** Set switches up appropriate to test type:
+            if test == "single":
+                playbook_cmd = "ansible-playbook " + playbook_single_switch
+                result = os.system(playbook_cmd)
+                result = test + "," + str(i+1) + "," + str(result)
+                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+            elif test == "dual":
+                playbook_cmd = "ansible-playbook " + playbook_dual_switch
+                result = os.system(playbook_cmd)
+                result = test + "," + str(i+1) + "," + str(result)
+                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+                start_dpn = 1
+            else:
+                print ("ERROR: unknown test type", test)
+                sys.exit()
+            #*** Set up the playbook to run the test:
+            if TEST_TYPE == "nmeta":
                 start_nmeta = "true"
                 start_nmeta2 = "false"
                 nmeta2_mode = "none"
                 start_simple_switch = "false"
-            elif test == "nmeta2-active":
+            elif TEST_TYPE == "nmeta2-active":
                 start_nmeta = "false"
                 start_nmeta2 = "true"
                 nmeta2_mode = "active"
                 start_simple_switch = "false"
-            elif test == "nmeta2-passive":
+            elif TEST_TYPE == "nmeta2-passive":
                 start_nmeta = "false"
                 start_nmeta2 = "true"
                 nmeta2_mode = "passive"
                 start_simple_switch = "false"
-            elif test == "simpleswitch":
+            elif TEST_TYPE == "simpleswitch":
                 start_nmeta = "false"
                 start_nmeta2 = "false"
                 nmeta2_mode = "none"
                 start_simple_switch = "true"
-            elif test == "nosdn":
+            elif TEST_TYPE == "nosdn":
                 start_nmeta = "false"
                 start_nmeta2 = "false"
                 nmeta2_mode = "none"
