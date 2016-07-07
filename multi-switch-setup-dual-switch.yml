@@ -140,7 +140,13 @@
 
     #*** Bail out of test if PING fails:
     - name: Second PING to server to check connectivity
-      shell: "ping -c 1 -W 10 sv1"
+      shell: "ping -c 3 -W 3 sv1"
+      changed_when: false
+
+    #*** Test Fail:
+    - name: Test Fail Condition to non-existent IP
+      shell: "ping -c 3 -W 3 1.1.1.1"
+      changed_when: false
 
 - hosts: load-generators
 
