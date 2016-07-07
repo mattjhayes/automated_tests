@@ -133,14 +133,24 @@
 
   tasks:
 
+    #*** Initial PING test with ignore errors:
+    - name: Initial PING to server
+      shell: "ping -c 1 sv1"
+      ignore_errors: True
+
     #*** Bail out of test if PING fails:
-    - name: send PING to server to check connectivity
+    - name: Second PING to server to check connectivity
       shell: "ping -c 1 sv1"
 
 - hosts: load-generators
 
   tasks:
 
-    #*** Bail out of test if PING fails:
+    #*** Initial PING test with ignore errors:
     - name: send PING to server to check connectivity
+      shell: "ping -c 1 lr1"
+      ignore_errors: True
+
+    #*** Bail out of test if PING fails:
+    - name: Second PING to server to check connectivity
       shell: "ping -c 1 lr1"

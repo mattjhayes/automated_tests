@@ -86,18 +86,18 @@ def main():
     iperf_starttime = get_iperf_starttime()
 
     #*** Get the time when treatment was applied on the switch:
-    treatment_time = get_treatment_time()
+    #treatment_time = get_treatment_time()
 
     #*** Calculate the delta between Iperf start and traffic treatment:
-    if iperf_starttime and treatment_time:
-        delta = treatment_time - iperf_starttime
+    #if iperf_starttime and treatment_time:
+    #    delta = treatment_time - iperf_starttime
         #*** Write result to file:
-        write_result(FILENAME_TT, delta.total_seconds())
-    else:
+    #    write_result(FILENAME_TT, delta.total_seconds())
+    #else:
         #*** Uh-oh, something must have gone wrong... Lets write
         #*** something to file for triage later:
-        write_error("Error: iperf_starttime=" + str(iperf_starttime) + \
-                    " treatment_time=" + str(treatment_time))
+    #    write_error("Error: iperf_starttime=" + str(iperf_starttime) + \
+    #                " treatment_time=" + str(treatment_time))
 
     #*** Get the number of packets sent to the DPAE as per switch flow:
     # (which sometimes tells lies in passive mode... beware...)

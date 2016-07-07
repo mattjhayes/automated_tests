@@ -39,13 +39,13 @@
 
   tasks:
 
-    - name: Kill switch OpenFlow snooping
-      command: "sudo pkill -f ovs-ofctl"
-      ignore_errors: True
+    #- name: Kill switch OpenFlow snooping
+    #  command: "sudo pkill -f ovs-ofctl"
+    #  ignore_errors: True
 
     #*** Restart Open vSwitch Services
-    - name: Restart Open vSwitch Switch Service
-      command: "sudo service openvswitch-switch restart"
+    #- name: Restart Open vSwitch Switch Service
+    #  command: "sudo service openvswitch-switch restart"
 
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
@@ -170,12 +170,12 @@
     - name: Create switch results folder
       file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
 
-    - debug: msg="Starting switch OpenFlow snooping..."
+    #- debug: msg="Starting switch OpenFlow snooping..."
 
-    - name: Set up switch OpenFlow snooping
-      shell: "nohup sudo ovs-ofctl snoop br0 --timestamp > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt 2>&1 &"
-      async: 90000
-      poll: 0
+    #- name: Set up switch OpenFlow snooping
+    #  shell: "nohup sudo ovs-ofctl snoop br0 --timestamp > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt 2>&1 &"
+    #  async: 90000
+    #  poll: 0
 
     - name: Pause to allow time for switch snooping to commence
       pause: seconds=6
@@ -232,9 +232,9 @@
 
     - debug: msg="Tidying up by killing unwanted switch async processes and retrieve results..."
 
-    - name: Kill switch OpenFlow snooping
-      command: "sudo pkill -f ovs-ofctl"
-      ignore_errors: True
+    #- name: Kill switch OpenFlow snooping
+    #  command: "sudo pkill -f ovs-ofctl"
+    #  ignore_errors: True
 
     - name: Dump the Switch Flow Table
       shell: "sudo ovs-ofctl dump-flows br0 -O OpenFlow13 > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt"
@@ -242,8 +242,8 @@
     - name: Retrieve the Switch Flow Table
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-flows.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
-    - name: Retrieve the Switch OpenFlow Snooping File
-      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+    #- name: Retrieve the Switch OpenFlow Snooping File
+    #  fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-OF-snooping.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
 
 #*** Retrieve file that holds parameters that test was called with:
 
