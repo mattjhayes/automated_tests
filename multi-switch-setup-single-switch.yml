@@ -13,13 +13,6 @@
 
   tasks:
 
-    - name: sw1 eth1 up
-      command: "sudo ip link set dev eth1 up"
-
-    - name: sw1 eth1 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth1"
-      ignore_errors: True
-
     - name: sw1 eth2 down
       command: "sudo ip link set dev eth2 down"
 
@@ -34,25 +27,11 @@
       command: "sudo ovs-vsctl add-port br0 eth3"
       ignore_errors: True
 
-    - name: sw1 eth5 up
-      command: "sudo ip link set dev eth5 up"
-
-    - name: sw1 eth5 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth5"
-      ignore_errors: True
-
     - name: sw1 eth6 down
       command: "sudo ip link set dev eth6 down"
 
     - name: sw1 eth6 OVS del
       command: "sudo ovs-vsctl del-port br0 eth6"
-      ignore_errors: True
-
-    - name: sw1 eth7 up
-      command: "sudo ip link set dev eth7 up"
-
-    - name: sw1 eth7 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth7"
       ignore_errors: True
 
     - name: sw1 Set OpenFlow Controller On
