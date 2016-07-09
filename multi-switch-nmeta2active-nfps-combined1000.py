@@ -98,6 +98,7 @@ def main():
     #*** Run tests
     for i in range(REPEATS):
         for test in tests:
+            print ("===================================================")
             print ("running test", test, "test suite iteration", i+1, \
                                                         "of", REPEATS)
             test_dir = os.path.join(TEST_BASEDIR, test)

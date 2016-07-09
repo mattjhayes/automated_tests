@@ -347,10 +347,10 @@
 
   tasks:
 
-    - name: Rotate nmeta2 log
+    - name: ct1 Rotate nmeta2 log
       command: "sudo mv /var/log/nmeta /var/log/nmeta.old.b4.{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}"
       when: start_nmeta2
-      
+      ignore_errors: True
 
     - debug: msg="Creating controller result folder..."
 
