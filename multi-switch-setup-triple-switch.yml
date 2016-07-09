@@ -14,7 +14,7 @@
   tasks:
 
     - name: sw1 set DPID
-      command: "sudo ovs-vsctl set bridge br0 other_config:datapath-id=00:00:00:00:00:01"
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000001"
 
     - name: sw1 eth2 up
       command: "sudo ip link set dev eth2 up"
@@ -47,7 +47,7 @@
   tasks:
 
     - name: sw2 set DPID
-      command: "sudo ovs-vsctl set bridge br0 other_config:datapath-id=00:00:00:00:00:02"
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000002"
 
     - name: sw2 eth2 down
       command: "sudo ip link set dev eth2 down"
@@ -72,7 +72,7 @@
   tasks:
 
     - name: sw3 set DPID
-      command: "sudo ovs-vsctl set bridge br0 other_config:datapath-id=00:00:00:00:00:03"
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000003"
 
     - name: sw3 eth3 down
       command: "sudo ip link set dev eth3 down"
@@ -86,7 +86,7 @@
   tasks:
 
     - name: sw4 set DPID
-      command: "sudo ovs-vsctl set bridge br0 other_config:datapath-id=00:00:00:00:00:04"
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000004"
 
     - name: sw4 eth3 down
       command: "sudo ip link set dev eth3 down"
@@ -100,7 +100,7 @@
   tasks:
 
     - name: sw5 set DPID
-      command: "sudo ovs-vsctl set bridge br0 other_config:datapath-id=00:00:00:00:00:05"
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000005"
 
     - name: sw5 Set OpenFlow Controller Off
       command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
@@ -111,7 +111,7 @@
   tasks:
 
     - name: swn set DPID
-      command: "sudo ovs-vsctl set bridge br0 other_config:datapath-id=00:00:00:00:00:FF"
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=00000000000000FF"
 
     - name: swn eth1 up
       command: "sudo ip link set dev eth1 up"
