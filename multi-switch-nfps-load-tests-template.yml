@@ -347,10 +347,16 @@
 
   tasks:
 
+    #*** Archive the log file so that we can later just put our log
     - name: ct1 Rotate nmeta2 log
       command: "sudo mv /var/log/nmeta /var/log/nmeta.old.b4.{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}"
       when: start_nmeta2
       ignore_errors: True
+
+    #*** Rsyslog needs restart after moving the log file
+    - name: ct1 Restart rsyslog
+      command: "sudo service rsyslog restart"
+      when: start_nmeta2
 
     - debug: msg="Creating controller result folder..."
 
