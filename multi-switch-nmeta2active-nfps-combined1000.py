@@ -89,7 +89,7 @@ def main():
     #*** Specific to running nmeta2 in active mode:
     start_nmeta = "false"
     start_nmeta2 = "true"
-    nmeta2_mode = "passive"
+    nmeta2_mode = "active"
     start_simple_switch = "false"
 
     #*** Start DPAE n (dpn) in tests that have multiple switches:
