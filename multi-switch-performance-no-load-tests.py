@@ -37,7 +37,7 @@ REPEATS = 3
 TEST_TYPE = "nosdn"
 
 #*** Types of tests to run (number of switches in path):
-TESTS = ["single", "dual", "triple"]
+TESTS = ["1", "2", "3", "4"]
 
 #*** Timestamp for results root directory:
 timenow = datetime.datetime.now()
@@ -72,6 +72,8 @@ def main():
             "automated_tests/multi-switch-setup-dual-switch.yml")
     playbook_triple_switch = os.path.join(HOME_DIR, \
             "automated_tests/multi-switch-setup-triple-switch.yml")
+    playbook_quad_switch = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-quad-switch.yml")
 
     #*** Create sub folders
     os.chdir(TEST_BASEDIR)
@@ -85,19 +87,25 @@ def main():
                               "of", REPEATS, "of test type", TEST_TYPE)
             test_dir = os.path.join(TEST_BASEDIR, test)
             #*** Set switches up appropriate to test type:
-            if test == "single":
+            if test == "1":
                 playbook_cmd = "ansible-playbook " + playbook_single_switch
                 result = os.system(playbook_cmd)
                 result = test + "," + str(i+1) + "," + str(result)
                 write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
-            elif test == "dual":
+            elif test == "2":
                 playbook_cmd = "ansible-playbook " + playbook_dual_switch
                 result = os.system(playbook_cmd)
                 result = test + "," + str(i+1) + "," + str(result)
                 write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
                 start_dpn = 1
-            elif test == "triple":
+            elif test == "3":
                 playbook_cmd = "ansible-playbook " + playbook_triple_switch
+                result = os.system(playbook_cmd)
+                result = test + "," + str(i+1) + "," + str(result)
+                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+                start_dpn = 1
+            elif test == "4":
+                playbook_cmd = "ansible-playbook " + playbook_quad_switch
                 result = os.system(playbook_cmd)
                 result = test + "," + str(i+1) + "," + str(result)
                 write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
