@@ -64,20 +64,20 @@
       ignore_errors: True
       when: start_nmeta2
 
-#*** Data Plane Auxiliary Engine n, process clean-up:
-#- hosts: dpn
+#*** Data Plane Auxiliary Engine n, process clean-up
+#*** Run this clean up regardless of whether or not using as
+#*** can cause issues for tests that don't need it:
+- hosts: dpn
 
-#  tasks:
+  tasks:
 
-#    - name: Kill dpae mosp process
-#      command: "sudo pkill -f mosp"
-#      ignore_errors: True
-#      when: start_dpn
+    - name: Kill dpae mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
 
-#    - name: Kill nmeta2dpae processes
-#      command: "sudo pkill -f nmeta2dpae.py"
-#      ignore_errors: True
-#      when: start_dpn
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
 
 #*** Client process clean-up:
 - hosts: clients
