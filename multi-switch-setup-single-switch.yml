@@ -19,23 +19,11 @@
     - name: sw1 eth2 down
       command: "sudo ip link set dev eth2 down"
 
-    - name: sw1 eth2 OVS del
-      command: "sudo ovs-vsctl del-port br0 eth2"
-      ignore_errors: True
-
     - name: sw1 eth3 up
       command: "sudo ip link set dev eth3 up"
 
-    - name: sw1 eth3 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth3"
-      ignore_errors: True
-
     - name: sw1 eth6 down
       command: "sudo ip link set dev eth6 down"
-
-    - name: sw1 eth6 OVS del
-      command: "sudo ovs-vsctl del-port br0 eth6"
-      ignore_errors: True
 
     - name: sw1 Set OpenFlow Controller On
       command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"

@@ -19,27 +19,14 @@
     - name: sw1 eth2 down
       command: "sudo ip link set dev eth2 down"
 
-    - name: sw1 eth2 OVS del
-      command: "sudo ovs-vsctl del-port br0 eth2"
-      ignore_errors: True
-
     - name: sw1 eth3 down
       command: "sudo ip link set dev eth3 down"
-
-    - name: sw1 eth3 OVS del
-      command: "sudo ovs-vsctl del-port br0 eth3"
-      ignore_errors: True
 
     - name: sw1 eth6 up
       command: "sudo ip link set dev eth6 up"
 
-    - name: sw1 eth6 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth6"
-      ignore_errors: True
-
     - name: sw1 Set OpenFlow Controller On
       command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
-
 
 #*** Switch 2:
 - hosts: switch2
@@ -105,23 +92,11 @@
     - name: swn eth1 up
       command: "sudo ip link set dev eth1 up"
 
-    - name: swn eth1 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth1"
-      ignore_errors: True
-
     - name: swn eth2 up
       command: "sudo ip link set dev eth2 up"
 
-    - name: swn eth2 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth2"
-      ignore_errors: True
-
     - name: swn eth3 up
       command: "sudo ip link set dev eth3 up"
-
-    - name: swn eth3 OVS add
-      command: "sudo ovs-vsctl add-port br0 eth3"
-      ignore_errors: True
 
     - name: swn Set OpenFlow Controller On
       command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
