@@ -32,6 +32,9 @@ version = "0.1.0"
 #*** How many times to run the set of tests:
 REPEATS = 3
 
+#*** Max number of switches in path
+SWITCHES_MAX = 4
+
 #*** Type of controller app to use. Choose one of:
 # "nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"
 TEST_TYPE = "nosdn"
@@ -58,22 +61,23 @@ print ("TEST_BASEDIR is", TEST_BASEDIR)
 #*** Filenames for test suite output into test root directory:
 FILENAME_SWITCH_SETUP_RESULTS = "switch_topology_setup_results.csv"
 
+#*** Ansible Playbooks to use:
+PLAYBOOK_TEST = os.path.join(HOME_DIR, \
+            "automated_tests/performance-no-load-tests-template.yml")
+PLAYBOOK_SINGLE_SWITCH_SETUP = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-single-switch.yml")
+PLAYBOOK_DUAL_SWITCH_SETUP = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-dual-switch.yml")
+PLAYBOOK_TRIPLE_SWITCH_SETUP = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-triple-switch.yml")
+PLAYBOOK_QUAD_SWITCH_SETUP = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-quad-switch.yml")
+
 def main():
     """
     Main function
     """
-
-    #*** Ansible Playbook to use:
-    playbook = os.path.join(HOME_DIR, \
-            "automated_tests/performance-no-load-tests-template.yml")
-    playbook_single_switch = os.path.join(HOME_DIR, \
-            "automated_tests/multi-switch-setup-single-switch.yml")
-    playbook_dual_switch = os.path.join(HOME_DIR, \
-            "automated_tests/multi-switch-setup-dual-switch.yml")
-    playbook_triple_switch = os.path.join(HOME_DIR, \
-            "automated_tests/multi-switch-setup-triple-switch.yml")
-    playbook_quad_switch = os.path.join(HOME_DIR, \
-            "automated_tests/multi-switch-setup-quad-switch.yml")
+    switches = 1
 
     #*** Create sub folders
     os.chdir(TEST_BASEDIR)
@@ -82,37 +86,39 @@ def main():
 
     #*** Run tests
     for i in range(REPEATS):
-        for test in TESTS:
-            print ("running test", test, "test suite iteration", i+1, \
-                              "of", REPEATS, "of test type", TEST_TYPE)
-            test_dir = os.path.join(TEST_BASEDIR, test)
+        for switches in range(SWITCHES_MAX):
             #*** Set switches up appropriate to test type:
-            if test == "1":
-                playbook_cmd = "ansible-playbook " + playbook_single_switch
-                result = os.system(playbook_cmd)
-                result = test + "," + str(i+1) + "," + str(result)
-                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
-            elif test == "2":
-                playbook_cmd = "ansible-playbook " + playbook_dual_switch
-                result = os.system(playbook_cmd)
-                result = test + "," + str(i+1) + "," + str(result)
-                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
-                start_dpn = 1
-            elif test == "3":
-                playbook_cmd = "ansible-playbook " + playbook_triple_switch
-                result = os.system(playbook_cmd)
-                result = test + "," + str(i+1) + "," + str(result)
-                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
-                start_dpn = 1
-            elif test == "4":
-                playbook_cmd = "ansible-playbook " + playbook_quad_switch
-                result = os.system(playbook_cmd)
-                result = test + "," + str(i+1) + "," + str(result)
-                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+            print ("Setting environment up for ", switches,
+                                                    "switch tests")
+            if switches == 1:
+                playbook_cmd = "ansible-playbook " + \
+                                            PLAYBOOK_SINGLE_SWITCH_SETUP
+            elif switches == 2:
+                playbook_cmd = "ansible-playbook " + \
+                                              PLAYBOOK_DUAL_SWITCH_SETUP
+            elif switches == 3:
+                playbook_cmd = "ansible-playbook " + \
+                                            PLAYBOOK_TRIPLE_SWITCH_SETUP
+            elif switches == 4:
+                playbook_cmd = "ansible-playbook " + \
+                                              PLAYBOOK_QUAD_SWITCH_SETUP
+            else:
+                print ("ERROR: unknown number of switches", switches)
+                sys.exit()
+            #*** Run playbook to set up switches:
+            result = os.system(playbook_cmd)
+            result = test + "," + str(i+1) + "," + str(result)
+            write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+            #*** Only use DPAE n if two or more switches:
+            if switches > 1:
                 start_dpn = 1
             else:
-                print ("ERROR: unknown test type", test)
-                sys.exit()
+                start_dpn = 0
+            #*** Iterate through the test types:
+            for test in TESTS:
+                print ("running test", test, "on", switches, "switches",
+                        i+1, "of", REPEATS, "of test type", TEST_TYPE)
+                test_dir = os.path.join(TEST_BASEDIR, test)
             #*** Set up the playbook to run the test:
             if TEST_TYPE == "nmeta":
                 start_nmeta = "true"
