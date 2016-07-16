@@ -109,8 +109,8 @@ def main():
                 start_dpn = 0
             #*** Iterate through the test types:
             for test_type in TESTS:
-                print ("Iteration", i, "of", test_type, "on",
-                        switches, "switches")
+                print ("Iteration", i, "of", REPEATS, ", running test"
+                        test_type, "on", switches, "switches")
                 test_dir = os.path.join(TEST_BASEDIR, str(switches),
                                                             test_type)
                 #*** Set up the playbook to run the test:
