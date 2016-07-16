@@ -76,11 +76,6 @@ def main():
     """
     switches = 1
 
-    #*** Create sub folders
-    os.chdir(TEST_BASEDIR)
-    for test in TESTS:
-        os.mkdir(test)
-
     #*** Run tests
     for i in range(1, REPEATS + 1):
         for switches in range(1, SWITCHES_MAX + 1):
