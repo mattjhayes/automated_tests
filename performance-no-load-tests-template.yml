@@ -175,7 +175,7 @@
     - debug: msg="Creating local and remote result folders..."
 
     - name: Create local results folder
-      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }}
+      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }} state=directory
       register: create_local_results_folder
       run_once: true
 
