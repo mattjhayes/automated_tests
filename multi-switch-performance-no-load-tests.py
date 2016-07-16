@@ -35,9 +35,9 @@ REPEATS = 3
 #*** Max number of switches in path
 SWITCHES_MAX = 4
 
-#*** Types of controller app tests to run, options are:
-# "nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"
-TESTS = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn"]
+#*** Types of controller app tests to run. Choose one or more of:
+# ["nmeta2-active", "nmeta2-passive", "nosdn"]
+TESTS = ["nmeta2-active", "nmeta2-passive", "nosdn"]
 
 #*** Timestamp for results root directory:
 TIMENOW = datetime.datetime.now()
