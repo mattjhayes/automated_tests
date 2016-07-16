@@ -27,7 +27,7 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.0"
+VERSION = "0.1.0"
 
 #*** How many times to run the set of tests:
 REPEATS = 3
@@ -35,16 +35,14 @@ REPEATS = 3
 #*** Max number of switches in path
 SWITCHES_MAX = 4
 
-#*** Type of controller app to use. Choose one of:
+#*** Types of controller app tests to run, options are:
 # "nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"
-TEST_TYPE = "nosdn"
-
-#*** Types of tests to run (number of switches in path):
-TESTS = ["1", "2", "3", "4"]
+TESTS = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn",
+                                                                "nmeta"]
 
 #*** Timestamp for results root directory:
-timenow = datetime.datetime.now()
-TIMESTAMP = timenow.strftime("%Y%m%d%H%M%S")
+TIMENOW = datetime.datetime.now()
+TIMESTAMP = TIMENOW.strftime("%Y%m%d%H%M%S")
 print ("timestamp is", TIMESTAMP)
 
 #*** Directory base path to write results to:
@@ -107,7 +105,8 @@ def main():
                 sys.exit()
             #*** Run playbook to set up switches:
             result = os.system(playbook_cmd)
-            result = test + "," + str(i+1) + "," + str(result)
+            result = "switches=" + switches + "," + "iteration=" + \
+                            str(i+1) + "," + "result=" + str(result)
             write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
             #*** Only use DPAE n if two or more switches:
             if switches > 1:
@@ -115,52 +114,54 @@ def main():
             else:
                 start_dpn = 0
             #*** Iterate through the test types:
-            for test in TESTS:
-                print ("running test", test, "on", switches, "switches",
-                        i+1, "of", REPEATS, "of test type", TEST_TYPE)
-                test_dir = os.path.join(TEST_BASEDIR, test)
-            #*** Set up the playbook to run the test:
-            if TEST_TYPE == "nmeta":
-                start_nmeta = "true"
-                start_nmeta2 = "false"
-                nmeta2_mode = "none"
-                start_simple_switch = "false"
-            elif TEST_TYPE == "nmeta2-active":
-                start_nmeta = "false"
-                start_nmeta2 = "true"
-                nmeta2_mode = "active"
-                start_simple_switch = "false"
-            elif TEST_TYPE == "nmeta2-passive":
-                start_nmeta = "false"
-                start_nmeta2 = "true"
-                nmeta2_mode = "passive"
-                start_simple_switch = "false"
-            elif TEST_TYPE == "simpleswitch":
-                start_nmeta = "false"
-                start_nmeta2 = "false"
-                nmeta2_mode = "none"
-                start_simple_switch = "true"
-            elif TEST_TYPE == "nosdn":
-                start_nmeta = "false"
-                start_nmeta2 = "false"
-                nmeta2_mode = "none"
-                start_simple_switch = "false"
-            else:
-                print ("ERROR: unknown test type", test)
-                sys.exit()
-            playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
-            playbook_cmd += "\"start_nmeta=" + start_nmeta
-            playbook_cmd += " start_nmeta2=" + start_nmeta2
-            playbook_cmd += " start_simple_switch=" + start_simple_switch
-            playbook_cmd += " nmeta2_mode=" + nmeta2_mode
-            playbook_cmd += " results_dir=" + test_dir + "/"
-            playbook_cmd += "\""
-            print ("playbook_cmd is", playbook_cmd)
+            for test_type in TESTS:
+                print ("running test on", switches, "switches",
+                        i+1, "of", REPEATS, "of test type", test_type)
+                test_dir = os.path.join(TEST_BASEDIR, switches,
+                                                            test_type)
+                #*** Set up the playbook to run the test:
+                if test_type == "nmeta":
+                    start_nmeta = "true"
+                    start_nmeta2 = "false"
+                    nmeta2_mode = "none"
+                    start_simple_switch = "false"
+                elif test_type == "nmeta2-active":
+                    start_nmeta = "false"
+                    start_nmeta2 = "true"
+                    nmeta2_mode = "active"
+                    start_simple_switch = "false"
+                elif test_type == "nmeta2-passive":
+                    start_nmeta = "false"
+                    start_nmeta2 = "true"
+                    nmeta2_mode = "passive"
+                    start_simple_switch = "false"
+                elif test_type == "simpleswitch":
+                    start_nmeta = "false"
+                    start_nmeta2 = "false"
+                    nmeta2_mode = "none"
+                    start_simple_switch = "true"
+                elif test_type == "nosdn":
+                    start_nmeta = "false"
+                    start_nmeta2 = "false"
+                    nmeta2_mode = "none"
+                    start_simple_switch = "false"
+                else:
+                    print ("ERROR: unknown test type", test_type)
+                    sys.exit()
+                playbook_cmd = "ansible-playbook " + PLAYBOOK_TEST
+                playbook_cmd += " --extra-vars "
+                playbook_cmd += "\"start_nmeta=" + start_nmeta
+                playbook_cmd += " start_nmeta2=" + start_nmeta2
+                playbook_cmd += " start_simple_switch=" + start_simple_switch
+                playbook_cmd += " nmeta2_mode=" + nmeta2_mode
+                playbook_cmd += " results_dir=" + test_dir + "/"
+                playbook_cmd += "\""
+                print ("playbook_cmd is", playbook_cmd)
 
-            print ("running Ansible playbook...")
-            os.system(playbook_cmd)
-            print ("Sleeping... zzzz")
-            time.sleep(30)
+                print ("running Ansible playbook...")
+                os.system(playbook_cmd)
+                print ("Sleeping... zzzz")
+                time.sleep(30)
 
 def write_result(filename, value):
     """
