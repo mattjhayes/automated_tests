@@ -105,8 +105,8 @@ def main():
                 sys.exit()
             #*** Run playbook to set up switches:
             result = os.system(playbook_cmd)
-            result = "switches=" + switches + "," + "iteration=" + \
-                            str(i) + "," + "result=" + str(result)
+            result = "switches=" + str(switches) + "," + "iteration=" \
+                            + str(i) + "," + "result=" + str(result)
             write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
             #*** Only use DPAE n if two or more switches:
             if switches > 1:
