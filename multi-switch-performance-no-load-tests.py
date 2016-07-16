@@ -37,8 +37,7 @@ SWITCHES_MAX = 4
 
 #*** Types of controller app tests to run, options are:
 # "nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn", "nmeta"
-TESTS = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn",
-                                                                "nmeta"]
+TESTS = ["nmeta2-active", "nmeta2-passive", "simpleswitch", "nosdn"]
 
 #*** Timestamp for results root directory:
 TIMENOW = datetime.datetime.now()
@@ -83,8 +82,8 @@ def main():
         os.mkdir(test)
 
     #*** Run tests
-    for i in range(1, REPEATS):
-        for switches in range(1, SWITCHES_MAX):
+    for i in range(1, REPEATS + 1):
+        for switches in range(1, SWITCHES_MAX + 1):
             #*** Set switches up appropriate to test type:
             print ("Setting environment up for ", switches,
                                                     "switch tests")
@@ -115,8 +114,8 @@ def main():
                 start_dpn = 0
             #*** Iterate through the test types:
             for test_type in TESTS:
-                print ("running test on", switches, "switches",
-                        i+1, "of", REPEATS, "of test type", test_type)
+                print ("Iteration", i, "of", test_type, "on",
+                        switches, "switches")
                 test_dir = os.path.join(TEST_BASEDIR, str(switches),
                                                             test_type)
                 #*** Set up the playbook to run the test:
