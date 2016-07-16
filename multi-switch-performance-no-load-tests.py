@@ -83,8 +83,8 @@ def main():
         os.mkdir(test)
 
     #*** Run tests
-    for i in range(REPEATS):
-        for switches in range(SWITCHES_MAX):
+    for i in range(1, REPEATS):
+        for switches in range(1, SWITCHES_MAX):
             #*** Set switches up appropriate to test type:
             print ("Setting environment up for ", switches,
                                                     "switch tests")
@@ -106,7 +106,7 @@ def main():
             #*** Run playbook to set up switches:
             result = os.system(playbook_cmd)
             result = "switches=" + switches + "," + "iteration=" + \
-                            str(i+1) + "," + "result=" + str(result)
+                            str(i) + "," + "result=" + str(result)
             write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
             #*** Only use DPAE n if two or more switches:
             if switches > 1:
