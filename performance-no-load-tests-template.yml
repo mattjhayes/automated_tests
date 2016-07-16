@@ -174,10 +174,17 @@
 
     - debug: msg="Creating local and remote result folders..."
 
+- hosts: localhost
+
+  tasks:
     - name: Create local results folder
-      local_action: shell mkdir {{ results_dir }}{{ results_timestamp.stdout }} state=directory
+      file: path={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }} state=directory
       register: create_local_results_folder
       run_once: true
+
+- hosts: clients
+
+  tasks:
 
     - name: Create client results folder
       file: path={{ results_dir }}{{ results_timestamp.stdout }} state=directory
