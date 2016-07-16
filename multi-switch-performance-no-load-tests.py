@@ -117,7 +117,7 @@ def main():
             for test_type in TESTS:
                 print ("running test on", switches, "switches",
                         i+1, "of", REPEATS, "of test type", test_type)
-                test_dir = os.path.join(TEST_BASEDIR, switches,
+                test_dir = os.path.join(TEST_BASEDIR, str(switches),
                                                             test_type)
                 #*** Set up the playbook to run the test:
                 if test_type == "nmeta":
