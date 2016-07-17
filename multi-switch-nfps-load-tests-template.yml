@@ -213,29 +213,29 @@
       when: start_nmeta2
 
 #*** Data Plane Auxiliary Engine n:
-#- hosts: dpn
+- hosts: dpn
 
-#  tasks:
+  tasks:
 
-#    - name: Kill nmeta2dpae processes
-#      command: "sudo pkill -f nmeta2dpae.py"
-#      ignore_errors: True
-#      when: start_dpn
+    - name: Kill nmeta2dpae processes
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_dpn
 
-#    - name: Run nmeta2dpae (if required) on dpae in the background
-#      #*** Note the use of redirect of output, otherwise will get broken pipe error:
-#      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
-#      async: 90000
-#      poll: 0
-#      when: start_dpn
+    - name: Run nmeta2dpae (if required) on dpae in the background
+      #*** Note the use of redirect of output, otherwise will get broken pipe error:
+      shell: "nohup sudo /home/bob/nmeta2dpae/nmeta2dpae/nmeta2dpae.py >/dev/null 2>&1 &"
+      async: 90000
+      poll: 0
+      when: start_dpn
 
-#    - name: Pause to allow time for DPAE to connect to controller
-#      pause: seconds=15
-#      when: start_dpn
+    - name: Pause to allow time for DPAE to connect to controller
+      pause: seconds=15
+      when: start_dpn
 
-#    - name: Doublecheck that nmeta2dpae.py is running
-#      command: "pgrep -f nmeta2dpae.py"
-#      when: start_dpn
+    - name: Doublecheck that nmeta2dpae.py is running
+      command: "pgrep -f nmeta2dpae.py"
+      when: start_dpn
 
 #*** Run monitoring and tests on the client(s):
 - hosts: clients
@@ -526,6 +526,20 @@
 
     - name: Retrieve DPAE mosp performance results
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
+- hosts: dpn
+
+  tasks:
+
+    - name: Kill dpae mosp process
+      command: "sudo pkill -f mosp"
+      ignore_errors: True
+      when: start_nmeta2
+
+    - name: Kill dpae nmeta2dpae process
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
       when: start_nmeta2
 
 #*** Stop mosp switch(es) and retrieve results:
