@@ -1,0 +1,140 @@
+---
+#- name: Multi-Switch Triple Switch Setup
+
+#*** Version 0.1.0
+
+#*** Configure the multi-switch lab for a single-switch test
+#***  by setting appropriate interfaces up/down.
+#***  Note that it is really important to get this right as
+#***  otherwise loops can form which will put switches to 100% CPU
+
+#*** Switch 1:
+- hosts: switch1
+
+  tasks:
+
+    - name: sw1 set DPID
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000001"
+
+    - name: sw1 eth2 up
+      command: "sudo ip link set dev eth2 up"
+
+    - name: sw1 eth3 down
+      command: "sudo ip link set dev eth3 down"
+
+    - name: sw1 eth6 down
+      command: "sudo ip link set dev eth6 down"
+
+    - name: sw1 Set OpenFlow Controller On
+      command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
+
+
+#*** Switch 2:
+- hosts: switch2
+
+  tasks:
+
+    - name: sw2 set DPID
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000002"
+
+    - name: sw2 eth2 up
+      command: "sudo ip link set dev eth2 up"
+
+    - name: sw2 eth3 down
+      command: "sudo ip link set dev eth3 down"
+
+    - name: sw2 Set OpenFlow Controller On
+      command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
+
+#*** Switch 3:
+- hosts: switch3
+
+  tasks:
+
+    - name: sw3 set DPID
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000003"
+
+    - name: sw3 eth2 up
+      command: "sudo ip link set dev eth2 up"
+
+    - name: sw3 eth3 down
+      command: "sudo ip link set dev eth3 down"
+
+    - name: sw3 Set OpenFlow Controller On
+      command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
+
+#*** Switch 4:
+- hosts: switch4
+
+  tasks:
+
+    - name: sw4 set DPID
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000004"
+
+    - name: sw4 eth2 down
+      command: "sudo ip link set dev eth2 down"
+
+    - name: sw4 eth3 up
+      command: "sudo ip link set dev eth3 up"
+
+    - name: sw4 Set OpenFlow Controller Off
+      command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
+
+#*** Switch 5:
+- hosts: switch5
+
+  tasks:
+
+    - name: sw5 set DPID
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000005"
+
+    - name: sw5 Set OpenFlow Controller Off
+      command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
+
+#*** Switch n:
+- hosts: switchn
+
+  tasks:
+
+    - name: swn set DPID
+      command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=00000000000000FF"
+
+    - name: swn eth1 up
+      command: "sudo ip link set dev eth1 up"
+
+    - name: swn eth2 up
+      command: "sudo ip link set dev eth2 up"
+
+    - name: swn eth3 up
+      command: "sudo ip link set dev eth3 up"
+
+    - name: swn Set OpenFlow Controller On
+      command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
+
+- hosts: clients
+
+  tasks:
+
+    #*** Initial PING test with ignore errors to learn MAC:
+    - name: pc1 Initial PING to server to learn MAC
+      command: "ping -c 1 sv1"
+      ignore_errors: True
+
+    #*** Bail out of test if PING fails:
+    - name: pc1 Second PING to server to check connectivity
+      command: "ping -c 3 -W 3 sv1"
+      changed_when: false
+
+- hosts: load-generators
+
+  tasks:
+
+    #*** Initial PING to load reflector to learn MAC:
+    - name: lg1 Initial PING to load reflector to learn MAC
+      command: "ping -c 1 lr1"
+      ignore_errors: True
+
+    #*** Bail out of test if PING fails:
+    - name: lg1 Second PING to server to check connectivity
+      command: "ping -c 3 -W 3 lr1"
+      changed_when: false
