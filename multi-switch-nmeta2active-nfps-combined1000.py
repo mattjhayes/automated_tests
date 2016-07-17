@@ -57,7 +57,7 @@ def main():
     """
 
     #*** Types of tests to run (number of switches in path):
-    tests = ["1", "2", "3"]
+    tests = ["1", "2", "3", "4", "5"]
 
     #*** Parameters for filt new flow rate load test:
     target_ip = "10.1.0.7"
@@ -80,6 +80,10 @@ def main():
             "automated_tests/multi-switch-setup-dual-switch.yml")
     playbook_triple_switch = os.path.join(HOME_DIR, \
             "automated_tests/multi-switch-setup-triple-switch.yml")
+    playbook_quad_switch = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-quad-switch.yml")
+    playbook_five_switch = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-five-switch.yml")
 
     #*** Create sub folders
     os.chdir(TEST_BASEDIR)
@@ -116,6 +120,18 @@ def main():
                 start_dpn = 1
             elif test == "3":
                 playbook_cmd = "ansible-playbook " + playbook_triple_switch
+                result = os.system(playbook_cmd)
+                result = test + "," + str(i+1) + "," + str(result)
+                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+                start_dpn = 1
+            elif test == "4":
+                playbook_cmd = "ansible-playbook " + playbook_quad_switch
+                result = os.system(playbook_cmd)
+                result = test + "," + str(i+1) + "," + str(result)
+                write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
+                start_dpn = 1
+            elif test == "5":
+                playbook_cmd = "ansible-playbook " + playbook_five_switch
                 result = os.system(playbook_cmd)
                 result = test + "," + str(i+1) + "," + str(result)
                 write_result(FILENAME_SWITCH_SETUP_RESULTS, result)
