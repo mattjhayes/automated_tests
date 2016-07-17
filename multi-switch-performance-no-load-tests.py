@@ -33,7 +33,7 @@ VERSION = "0.1.0"
 REPEATS = 3
 
 #*** Max number of switches in path
-SWITCHES_MAX = 4
+SWITCHES_MAX = 5
 
 #*** Types of controller app tests to run. Choose one or more of:
 # ["nmeta2-active", "nmeta2-passive", "nosdn"]
@@ -69,6 +69,8 @@ PLAYBOOK_TRIPLE_SWITCH_SETUP = os.path.join(HOME_DIR, \
             "automated_tests/multi-switch-setup-triple-switch.yml")
 PLAYBOOK_QUAD_SWITCH_SETUP = os.path.join(HOME_DIR, \
             "automated_tests/multi-switch-setup-quad-switch.yml")
+PLAYBOOK_FIVE_SWITCH_SETUP = os.path.join(HOME_DIR, \
+            "automated_tests/multi-switch-setup-five-switch.yml")
 
 def main():
     """
@@ -94,6 +96,9 @@ def main():
             elif switches == 4:
                 playbook_cmd = "ansible-playbook " + \
                                               PLAYBOOK_QUAD_SWITCH_SETUP
+            elif switches == 5:
+                playbook_cmd = "ansible-playbook " + \
+                                              PLAYBOOK_FIVE_SWITCH_SETUP
             else:
                 print ("ERROR: unknown number of switches", switches)
                 sys.exit()
