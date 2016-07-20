@@ -186,6 +186,9 @@
       command: "pgrep -f nmeta2.py"
       when: start_nmeta2
 
+    - name: Pause to allow time Switch to connect to Controller
+      pause: seconds=15
+
 #*** Data Plane Auxiliary Engine, when doing nmeta2:
 - hosts: dpae
 
