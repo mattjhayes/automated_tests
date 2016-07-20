@@ -468,11 +468,12 @@
       when: start_nmeta2
 
     - name: dp1 Copy nmeta log file to new name
-      command: cp /var/log/nmeta /var/log/{{ inventory_hostname }}-nmeta.log
+      command: cp /var/log/nmeta {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-nmeta.log
+      when: start_nmeta2
       ignore_errors: True
 
     - name: dp1 Retrieve the nmeta log file
-      fetch: src=/var/log/{{ inventory_hostname }}-nmeta.log dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-nmeta.log dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
 #*** Stop mosp switch(es) and retrieve results:
@@ -511,11 +512,12 @@
       when: start_nmeta2
 
     - name: ct1 Copy nmeta log file to new name
-      command: cp /var/log/nmeta /var/log/{{ inventory_hostname }}-nmeta.log
+      command: cp /var/log/nmeta {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-nmeta.log
+      when: start_nmeta2
       ignore_errors: True
 
     - name: ct1 Retrieve the nmeta log file
-      fetch: src=/var/log/{{ inventory_hostname }}-nmeta.log dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-nmeta.log dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
     #*** Finish by stopping any Ryu processes:
