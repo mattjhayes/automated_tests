@@ -65,12 +65,23 @@
 
   tasks:
 
-    - name: Kill dpae mosp process
+    #*** Archive the log file so that we can later just put our log
+    - name: dp1 Rotate nmeta2dpae log
+      command: "sudo mv /var/log/nmeta /var/log/nmeta.old"
+      when: start_nmeta2
+      ignore_errors: True
+
+    #*** Rsyslog needs restart after moving the log file
+    - name: dp1 Restart rsyslog
+      command: "sudo service rsyslog restart"
+      when: start_nmeta2
+
+    - name: dp1 Kill dpae mosp process
       command: "sudo pkill -f mosp"
       ignore_errors: True
       when: start_nmeta2
 
-    - name: Kill nmeta2dpae processes
+    - name: dp1 Kill nmeta2dpae processes
       command: "sudo pkill -f nmeta2dpae.py"
       ignore_errors: True
       when: start_nmeta2
@@ -456,6 +467,14 @@
       fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-mosp.csv dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
+    - name: dp1 Copy nmeta log file to new name
+      command: cp /var/log/nmeta /var/log/{{ inventory_hostname }}-nmeta.log
+      ignore_errors: True
+
+    - name: dp1 Retrieve the nmeta log file
+      fetch: src=/var/log/{{ inventory_hostname }}-nmeta.log dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
+
 #*** Stop mosp switch(es) and retrieve results:
 
 - hosts: switches
@@ -483,16 +502,20 @@
 
   tasks:
 
-    - name: Retrieve the main policy file
+    - name: ct1 Retrieve the main policy file
       fetch: src=~/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta
 
-    - name: Retrieve the main policy file
+    - name: ct1 Retrieve the main policy file
       fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
-    - name: Retrieve the nmeta log file
-      fetch: src=/var/log/nmeta dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+    - name: ct1 Copy nmeta log file to new name
+      command: cp /var/log/nmeta /var/log/{{ inventory_hostname }}-nmeta.log
+      ignore_errors: True
+
+    - name: ct1 Retrieve the nmeta log file
+      fetch: src=/var/log/{{ inventory_hostname }}-nmeta.log dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
     #*** Finish by stopping any Ryu processes:
