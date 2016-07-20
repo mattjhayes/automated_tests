@@ -37,15 +37,26 @@
 
   tasks:
 
-    - name: Kill controller mosp process
+    #*** Archive the log file so that we can later just put our log
+    - name: ct1 Rotate nmeta2 log
+      command: "sudo mv /var/log/nmeta /var/log/nmeta.old"
+      when: start_nmeta2
+      ignore_errors: True
+
+    #*** Rsyslog needs restart after moving the log file
+    - name: ct1 Restart rsyslog
+      command: "sudo service rsyslog restart"
+      when: start_nmeta2
+
+    - name: ct1 Kill controller mosp process
       command: "sudo pkill -f mosp"
       ignore_errors: True
 
-    - name: Kill controller hort processes
+    - name: ct1 Kill controller hort processes
       command: "sudo pkill -f hort"
       ignore_errors: True
 
-    - name: Kill controller ryu processes (nmeta or simple switch etc)
+    - name: ct1 Kill controller ryu processes (nmeta or simple switch etc)
       command: "sudo pkill -f ryu-manager"
       ignore_errors: True
 
@@ -480,10 +491,11 @@
       fetch: src=~/nmeta2/nmeta2/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
-#*** Finish by stopping any Ryu processes:
-- hosts: controllers
+    - name: Retrieve the nmeta log file
+      fetch: src=/var/log/nmeta dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      when: start_nmeta2
 
-  tasks:
+    #*** Finish by stopping any Ryu processes:
 
     - name: Kill controller ryu processes (nmeta or simple switch etc)
       command: "sudo pkill -f ryu-manager"
