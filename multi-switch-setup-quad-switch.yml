@@ -64,6 +64,7 @@
       command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
 
 #*** Switch 4:
+#*** This isn't used, only use sw1, sw2, sw3 and swn
 - hosts: switch4
 
   tasks:
@@ -74,13 +75,14 @@
     - name: sw4 eth2 down
       command: "sudo ip link set dev eth2 down"
 
-    - name: sw4 eth3 up
-      command: "sudo ip link set dev eth3 up"
+    - name: sw4 eth3 down
+      command: "sudo ip link set dev eth3 down"
 
     - name: sw4 Set OpenFlow Controller Off
       command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
 
 #*** Switch 5:
+#*** This isn't used, only use sw1, sw2, sw3 and swn
 - hosts: switch5
 
   tasks:

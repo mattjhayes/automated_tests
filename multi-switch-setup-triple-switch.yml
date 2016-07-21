@@ -47,12 +47,16 @@
       command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
 
 #*** Switch 3:
+#*** This isn't used, only use sw1, sw2, and swn
 - hosts: switch3
 
   tasks:
 
     - name: sw3 set DPID
       command: "sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000003"
+
+    - name: sw3 eth2 down
+      command: "sudo ip link set dev eth2 down"
 
     - name: sw3 eth3 down
       command: "sudo ip link set dev eth3 down"
@@ -61,6 +65,7 @@
       command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
 
 #*** Switch 4:
+#*** This isn't used, only use sw1, sw2, and swn
 - hosts: switch4
 
   tasks:
@@ -75,6 +80,7 @@
       command: "sudo ovs-vsctl set-controller br0 tcp:1.1.1.1:6633"
 
 #*** Switch 5:
+#*** This isn't used, only use sw1, sw2, and swn
 - hosts: switch5
 
   tasks:
