@@ -145,6 +145,17 @@
 
   tasks:
 
+    #*** Archive the log file so that we can later just put our log
+    - name: dp1 Rotate nmeta2dpae log
+      command: "sudo mv /var/log/nmeta /var/log/nmeta.old"
+      when: start_nmeta2
+      ignore_errors: True
+
+    #*** Rsyslog needs restart after moving the log file
+    - name: dp1 Restart rsyslog
+      command: "sudo service rsyslog restart"
+      when: start_nmeta2
+
     - name: Kill nmeta2dpae processes
       command: "sudo pkill -f nmeta2dpae.py"
       ignore_errors: True
@@ -303,12 +314,13 @@
 
   tasks:
 
-    - name: Export tail of DPAE log
-      shell: "tail -300 /var/log/nmeta > {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-applog.txt"
+    - name: dp1 Copy nmeta log file to new name
+      command: cp /var/log/nmeta {{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-nmeta.log
       when: start_nmeta2
+      ignore_errors: True
 
-    - name: Retrieve DPAE log
-      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-applog.txt dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+    - name: dp1 Retrieve the nmeta log file
+      fetch: src={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/{{ inventory_hostname }}-nmeta.log dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta2
 
     - name: Kill nmeta2dpae processes
