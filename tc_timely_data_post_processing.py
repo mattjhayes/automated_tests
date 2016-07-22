@@ -170,7 +170,7 @@ def check_snoop_line(snoop_line, timezone):
     if of_snoop_match:
         #*** Now see if line contains pattern for a treatment:
         treatment_match = \
-                re.search(r"actions\=set_queue\:1\,goto\_table\:5",
+                re.search(r"actions\=set_queue\:1\,goto\_table\:",
                 snoop_line)
         if treatment_match:
             print("matched treatment on line ", snoop_line)
