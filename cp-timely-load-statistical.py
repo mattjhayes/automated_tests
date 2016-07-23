@@ -155,7 +155,7 @@ for i in range(repeats):
             else:
                 print "ERROR: unknown test type", test
                 sys.exit()
-            playbook_cmd = "ansible-playbook -v " + playbook + " --extra-vars "
+            playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
             playbook_cmd += "\"start_nmeta=" + start_nmeta
             playbook_cmd += " start_nmeta2=" + start_nmeta2
             playbook_cmd += " start_simple_switch=" + start_simple_switch
