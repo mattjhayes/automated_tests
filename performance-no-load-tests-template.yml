@@ -116,7 +116,7 @@
       when: start_nmeta2
 
     - name: Run Ryu with simple switch OFv1.3 (if required) on controller in the background
-      shell: "nohup ~/ryu/bin/ryu-manager ~/ryu/ryu/app/simple_switch_13.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ryu.app.simple_switch_13 &"
       args:
         chdir: ~/ryu
       async: 90000
@@ -124,7 +124,7 @@
       when: start_simple_switch
 
     - name: Doublecheck that simple switch is running
-      command: "pgrep -f simple_switch_13.py"
+      command: "pgrep -f simple_switch_13"
       when: start_simple_switch
 
     - name: Doublecheck that nmeta is running
