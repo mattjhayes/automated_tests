@@ -70,8 +70,8 @@
 
   tasks:
 
-    - name: Copy nmeta statistical main_policy file into place
-      command: "cp ~/nmeta/config/tests/regression/main_policy_regression_statistical.yaml ~/nmeta/config/main_policy.yaml"
+    - name: Copy NFPS main config file into place
+      command: "cp ~/nmeta/config/tests/nfps_load/main_policy_nfps_load.yaml ~/nmeta/config/main_policy.yaml"
       when: start_nmeta
 
     - name: Copy nmeta qos config file into place
