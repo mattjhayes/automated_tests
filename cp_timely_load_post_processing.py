@@ -93,24 +93,6 @@ def main():
     #*** Get the time for when the crafted packet was sent:
     crafted_pkt_send_time = get_crafted_pkt_send_time()
 
-    #*** SNOOP CALCS, based off Open vSwitch snoop logs:
-    #*** Get the time when forwarding was applied on the switch:
-    forwarding_rule_time = get_forwarding_rule_time()
-    if crafted_pkt_send_time and forwarding_rule_time:
-        delta = forwarding_rule_time - crafted_pkt_send_time
-        result = TEST_TYPE + ',' + str(LOAD_RATE) + ',' \
-                                            + str(delta.total_seconds())
-        #*** Write result to file:
-        write_result(FILENAME_TT_SNOOP, result)
-    else:
-        #*** Uh-oh, something must have gone wrong... Lets write
-        #*** something to file for triage later:
-        write_error(FILENAME_ERROR_SNOOP, "Error: crafted_pkt_send_time=" + \
-                    str(crafted_pkt_send_time) + \
-                    " forwarding_rule_time=" + \
-                    str(forwarding_rule_time))
-
-
     #*** TRAFFIC CALCS, based off tcp dump last timestamp for crafted pkt:
     (traffic_last_time, matched_crafted_packets) = get_traffic_last_time()
     if crafted_pkt_send_time and traffic_last_time:
@@ -188,27 +170,6 @@ def get_crafted_pkt_send_time():
         print("Error finding crafted packet send time")
         return 0
 
-def get_forwarding_rule_time():
-    """
-    Return the time when treatment was applied on the switch,
-    or 0 if error
-    """
-    forwarding_rule_time = 0
-    #*** Read in the TC Flow Entry (Treatment) Install Time on Switch:
-    filename = os.path.join(TEST_DIR, FILENAME_FLOWUPDATES)
-    with open(filename, 'r') as f:
-        for line in f.readlines():
-            if not forwarding_rule_time:
-                #*** Call function to check the line to see if it is
-                #***  install of forwarding rule for specific MAC
-                #***  and if so, return time in UTC timezone:
-                forwarding_rule_time = check_snoop_line(line, UTC)
-    if forwarding_rule_time:
-        return forwarding_rule_time
-    else:
-        print("WARNING: failed to find a forwarding rule install entry")
-        return 0
-
 def get_traffic_last_time():
     """
     return the timestamp of the last line in the tcpdump file
@@ -255,48 +216,6 @@ def check_tcpdump_line(tcpdump_line):
             print("Dst MAC ", tcpdump_match.group(3), " not equal to crafted MAC, returning 0")
             return 0
     print("no match, returning 0")
-    return 0
-
-def check_snoop_line(snoop_line, timezone):
-    """
-    Passed a line from the OVS snooping file and determine if it is
-    the forwarding rule being applied for the specific source MAC
-    sent in the crafted packet. If forwarding rule install is
-    found, return the time in usable format
-    (datetime object with correct timezone).
-    """
-    #*** Extract date/time from the line:
-    #*** Example line start: 2016-04-14 09:14:38.592: OFPT_FLOW_MOD...
-
-    #*** Example simpleswitch entry:
-    #2016-06-03 10:40:01.866: OFPT_FLOW_MOD (OF1.3) (xid=0x9d35135e): ADD priority=1,in_port=1,dl_dst=00:00:00:00:12:34 out_port:0 actions=output:2
-
-    
-    #*** date time is in group 1:
-    of_snoop_match = \
-                re.match(r"^(\d+\-\d+\-\d+\s+\d+\:\d+\:\d+\.\d+).*",
-                snoop_line)
-    if of_snoop_match:
-        #*** Now see if line contains pattern for a treatment:
-        if TEST_TYPE == 'nmeta2-active' or TEST_TYPE == 'nmeta2-passive':
-            treatment_match = \
-                re.search(r"table\:5\spriority\=1\,dl_dst\=00\:00\:00\:00\:12\:34",
-                snoop_line)
-        elif TEST_TYPE == 'simpleswitch':
-            treatment_match = \
-                re.search(r"dl_dst\=00\:00\:00\:00\:12\:34\sout\_port\:0\sactions\=\output\:2",
-                snoop_line)
-        else:
-            print("Error, unknown test type ", TEST_TYPE)
-            return 0
-        if treatment_match:
-            print("matched treatment on line ", snoop_line)
-            tt_datetime = of_snoop_match.group(1)
-            pattern = '%Y-%m-%d %H:%M:%S.%f'
-            tt_datetime2 = datetime.strptime(tt_datetime, pattern)
-            tt_datetime2_tz = timezone.localize(tt_datetime2)
-            print("treatment_time_tz is ", tt_datetime2_tz)
-            return tt_datetime2_tz
     return 0
 
 def get_pkts(filename):

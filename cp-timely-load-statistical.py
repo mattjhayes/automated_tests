@@ -112,8 +112,15 @@ for i in range(repeats):
     test_load_rate = test_load_initial_rate
     while test_load_rate <= test_load_max_rate:
         for test in tests:
-            print "running test", test
+            print "======================================"
+            print "running test", test, "at NFPS", test_load_rate, \
+                            "test suite iteration", i+1, \
+                             "of", repeats
             test_dir = os.path.join(test_basedir, test)
+            #*** Rotate Ansible log:
+            os.rename("/tmp/ansible.log", "/tmp/ansible.log.old")
+            os.mknod("/tmp/ansible.log")
+            #*** Set test parameters:
             if test == "nmeta":
                 start_nmeta = "true"
                 start_nmeta2 = "false"
@@ -172,6 +179,12 @@ for i in range(repeats):
 
             print "running Ansible playbook..."
             os.system(playbook_cmd)
+
+            #*** Retrieve Ansible log:
+            ansible_log_dst = os.path.join(test_basedir, "ansible.log")
+            os.rename("/tmp/ansible.log", ansible_log_dst)
+            os.mknod("/tmp/ansible.log")
+            
             print "Sleeping... zzzz"
             time.sleep(10)
         #*** Increment load rate:
