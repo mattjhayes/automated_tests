@@ -22,7 +22,7 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.0"
+version = "0.1.1"
 
 #*** How many times to run the set of tests:
 repeats = 30
@@ -68,6 +68,9 @@ for i in range(repeats):
         print "running test", test, "test suite iteration", i+1, "of", \
                                                             repeats
         test_dir=os.path.join(test_basedir, test)
+        #*** Rotate Ansible log:
+        os.rename("/tmp/ansible.log", "/tmp/ansible.log.old")
+        os.mknod("/tmp/ansible.log")
         if test == "nmeta2-statistical-active":
             start_nmeta="false"
             start_nmeta2="true"
@@ -94,6 +97,12 @@ for i in range(repeats):
         
         print "running Ansible playbook..."
         os.system(playbook_cmd)
+
+        #*** Retrieve Ansible log:
+        ansible_log_dst = os.path.join(test_dir, "ansible.log")
+        os.rename("/tmp/ansible.log", ansible_log_dst)
+        os.mknod("/tmp/ansible.log")
+            
         print "Sleeping... zzzz"
         time.sleep(30)
         
