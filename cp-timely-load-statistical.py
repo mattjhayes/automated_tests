@@ -181,7 +181,7 @@ for i in range(repeats):
             os.system(playbook_cmd)
 
             #*** Retrieve Ansible log:
-            ansible_log_dst = os.path.join(test_basedir, "ansible.log")
+            ansible_log_dst = os.path.join(test_dir, "ansible.log")
             os.rename("/tmp/ansible.log", ansible_log_dst)
             os.mknod("/tmp/ansible.log")
             
