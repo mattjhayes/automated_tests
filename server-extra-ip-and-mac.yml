@@ -7,6 +7,8 @@
 #*** Needs to use network name spaces and in VirtualBox the
 #*** NICs need to be PC-net FAST III with promiscuous mode 'allow all'
 
+#*** Be sure to set the MAC address appropriately for the static ARP
+
 #*** Example usage:
 #***   ansible-playbook ~/automated_tests/server-extra-ip-and-mac.yml --extra-vars "interface=eth1 mac=00:00:00:00:12:34 ip=10.1.2.7 masklength=22"
 

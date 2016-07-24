@@ -8,7 +8,9 @@
 #*** Example nmeta baseline:
 #***   ansible-playbook ~/automated_tests/cp-timely-load-template.yml --extra-vars "start_nmeta=true start_nmeta2=false start_simple_switch=false test_type=nmeta results_dir=~/results/timeliness/statistical/ target_ip=10.1.0.2 target_mac=00:00:00:00:00:07 interface=eth1 initial_rate=10 max_rate=10 flow_inc=10 incr_interval=100 proto=6 dport=12345 algorithm=make-good policy_name=main_policy_regression_statistical.yaml crafted_mac=00:00:00:00:12:34 crafted_ip=10.1.2.7"
 
-#*** Switch process clean-up:
+#*** Be sure to set the MAC address appropriately for the client
+
+#*** Switch process clean-up and set-up:
 - hosts: switches
 
   tasks:
@@ -17,9 +19,24 @@
       command: "sudo pkill -f mosp"
       ignore_errors: True
 
-    #*** Restart Open vSwitch Services. May not be necessary?
-    - name: Restart Open vSwitch Switch Service
+    #*** Set the controller for the switch. This is because MAC learning
+    #*** does not work in a timely manner on OVS 2.5.0 with an OF controller set
+    #*** but in fail mode, so the no-sdn case does not work correctly unless
+    #*** controller is deleted:
+    - name: sw1 Delete Switch Controller
+      command: "sudo ovs-vsctl del-controller br0"
+      when: (start_nmeta == 'false') and (start_nmeta2 == 'false') and (start_simple_switch == 'false')
+
+    - name: sw1 Set OpenFlow Switch Controller
+      command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
+      when: (start_nmeta == 'true') or (start_nmeta2 == 'true') or (start_simple_switch == 'true')
+
+    #*** Restart Open vSwitch Services.
+    - name: sw1 Restart Open vSwitch Switch Service
       command: "sudo service openvswitch-switch restart"
+
+    - name: sw1 Pause to allow time for switch to restart
+      pause: seconds=3
 
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
@@ -324,6 +341,17 @@
     - name: Kill controller ryu processes (nmeta or simple switch etc)
       command: "sudo pkill -f ryu-manager"
       ignore_errors: True
+
+#*** Stop nmeta_dpae on DPAE(es):
+
+- hosts: dpae
+
+  tasks:
+
+    - name: Kill dpae nmeta2dpae process
+      command: "sudo pkill -f nmeta2dpae.py"
+      ignore_errors: True
+      when: start_nmeta2
 
 #*** Retrieve Server telemetry:
 
