@@ -256,8 +256,11 @@
 - hosts: clients
 
   tasks:
+    #- name: Send packets to crafted mac/ip to see how long they are flooded for
+    #  shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py 08:00:27:45:86:b4 {{ crafted_mac }} 0x800 10.1.0.1 {{ crafted_ip }} 2345 6789 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
+
     - name: Send packets to crafted mac/ip to see how long they are flooded for
-      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt.py 08:00:27:45:86:b4 {{ crafted_mac }} 0x800 10.1.0.1 {{ crafted_ip }} 2345 6789 eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
+      shell: "sudo python ~/testtools/tosc/tosc.py /tmp/crafted_pkt_starttime.txt '~/testtools/cpkt/cpkt-icmp.py 08:00:27:45:86:b4 {{ crafted_mac }} 10.1.0.1 {{ crafted_ip }} eth1 0.001 200' /tmp/crafted_pkt_endtime.txt"
 
     - name: Retrieve crafted packet start time
       fetch: src=/tmp/crafted_pkt_starttime.txt dest={{ results_dir }}{{ results_timestamp.stdout }}/ flat=yes
