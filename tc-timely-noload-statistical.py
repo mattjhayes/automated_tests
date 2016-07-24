@@ -69,8 +69,10 @@ for i in range(repeats):
                                                             repeats
         test_dir=os.path.join(test_basedir, test)
         #*** Rotate Ansible log:
-        os.rename("/tmp/ansible.log", "/tmp/ansible.log.old")
-        os.mknod("/tmp/ansible.log")
+        if os.path.isfile("/tmp/ansible.log"):
+            os.rename("/tmp/ansible.log", "/tmp/ansible.log.old")
+            os.mknod("/tmp/ansible.log")
+        #*** Set up test-specific parameters:
         if test == "nmeta2-statistical-active":
             start_nmeta="false"
             start_nmeta2="true"
