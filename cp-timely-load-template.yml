@@ -19,25 +19,6 @@
       command: "sudo pkill -f mosp"
       ignore_errors: True
 
-    #*** Set the controller for the switch. This is because MAC learning
-    #*** does not work in a timely manner on OVS 2.5.0 with an OF controller set
-    #*** but in fail mode, so the no-sdn case does not work correctly unless
-    #*** controller is deleted:
-    - name: sw1 Delete Switch Controller
-      command: "sudo ovs-vsctl del-controller br0"
-      when: (start_nmeta == 'false') and (start_nmeta2 == 'false') and (start_simple_switch == 'false')
-
-    - name: sw1 Set OpenFlow Switch Controller
-      command: "sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633"
-      when: (start_nmeta == 'true') or (start_nmeta2 == 'true') or (start_simple_switch == 'true')
-
-    #*** Restart Open vSwitch Services.
-    - name: sw1 Restart Open vSwitch Switch Service
-      command: "sudo service openvswitch-switch restart"
-
-    - name: sw1 Pause to allow time for switch to restart
-      pause: seconds=3
-
 #*** Start by ensuring nmeta is not running then start it if required:
 - hosts: controllers
 
