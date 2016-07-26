@@ -103,7 +103,7 @@ for i in range(repeats):
         #*** Retrieve Ansible log:
         timenow = datetime.datetime.now()
         timestamp_ansible = timenow.strftime("%Y%m%d%H%M%S")
-        dest_filename = timestamp + "-finished-ansible.log"
+        dest_filename = timestamp_ansible + "-finished-ansible.log"
         ansible_log_dst = os.path.join(test_dir, dest_filename)
         os.rename("/tmp/ansible.log", ansible_log_dst)
         os.mknod("/tmp/ansible.log")
