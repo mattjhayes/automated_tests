@@ -31,7 +31,7 @@ import sys
 version = "0.1.0"
 
 #*** How many times to run the set of tests:
-repeats = 3
+repeats = 12
 
 #*** Types of tests to run:
 #***  Note: don't do nmeta as it doesn't do MAC learning in switch
