@@ -22,92 +22,103 @@ import os
 from os.path import expanduser
 import sys
 
-version = "0.1.1"
+VERSION = "0.1.2"
 
 #*** How many times to run the set of tests:
-repeats = 30
+REPEATS = 30
 
 #*** Types of tests to run:
-tests = ["nmeta2-statistical-active", "nmeta2-statistical-passive"]
+TESTS = ["nmeta2-statistical-active", "nmeta2-statistical-passive"]
+
+#*** How many seconds to run the Iperf load for (per test):
+DURATION = "10"
 
 #*** Directory base path to write results to:
-home_dir = expanduser("~")
-results_dir = os.path.join(home_dir,
+HOME_DIR = expanduser("~")
+RESULTS_DIR = os.path.join(HOME_DIR,
                                 "results/timeliness/statistical/")
 
-#*** Parameters for regression test:
-duration="10"
-
 #*** Ansible Playbook to use:
-playbook = os.path.join(home_dir, \
-                    "automated_tests/tc-timely-noload-statistical-template.yml")
+PLAYBOOK = os.path.join(HOME_DIR, \
+            "automated_tests/tc-timely-noload-statistical-template.yml")
 
-#*** Timestamp for results root directory:
-timenow = datetime.datetime.now()
-timestamp = timenow.strftime("%Y%m%d%H%M%S")
-print "timestamp is", timestamp
+def main():
+    """
+    Main function
+    """
 
-#*** Create root directory for results:
-os.chdir(results_dir)
-os.mkdir(timestamp)
-test_basedir = os.path.join(results_dir, timestamp)
-print "test_basedir is", test_basedir
+    #*** Timestamp for results root directory:
+    timenow = datetime.datetime.now()
+    timestamp = timenow.strftime("%Y%m%d%H%M%S")
+    print "timestamp is", timestamp
 
-#*** Create sub folders
-os.chdir(test_basedir)
-for test in tests:
-    os.mkdir(test)
+    #*** Create root directory for results:
+    os.chdir(RESULTS_DIR)
+    os.mkdir(timestamp)
+    test_basedir = os.path.join(HOME_DIR, timestamp)
+    print "test_basedir is", test_basedir
 
-#*** Initialise:
-start_nmeta="false"
-start_nmeta2="false"
+    #*** Create sub folders
+    os.chdir(test_basedir)
+    for test in TESTS:
+        os.mkdir(test)
 
-#*** Run tests
-for i in range(repeats):
-    for test in tests:
-        print "running test", test, "test suite iteration", i+1, "of", \
-                                                            repeats
-        test_dir=os.path.join(test_basedir, test)
-        #*** Rotate Ansible log:
-        if os.path.isfile("/tmp/ansible.log"):
-            os.rename("/tmp/ansible.log", "/tmp/ansible.log.old")
+    #*** Initialise:
+    start_nmeta = "false"
+    start_nmeta2 = "false"
+    #*** Run tests
+    for i in range(1, REPEATS + 1):
+        for test in TESTS:
+            print "=================================================="
+            print "Running test", test, "test suite iteration", i, \
+                                            "of", REPEATS
+            test_dir = os.path.join(test_basedir, test)
+            #*** Rotate Ansible log:
+            if os.path.isfile("/tmp/ansible.log"):
+                os.rename("/tmp/ansible.log", "/tmp/ansible.log.old")
+                os.mknod("/tmp/ansible.log")
+            #*** Set up test-specific parameters:
+            if test == "nmeta2-statistical-active":
+                start_nmeta = "false"
+                start_nmeta2 = "true"
+                policy_name = "main_policy_regression_statistical.yaml"
+            elif test == "nmeta2-statistical-passive":
+                start_nmeta = "false"
+                start_nmeta2 = "true"
+                policy_name = \
+                       "main_policy_regression_statistical_passive.yaml"
+            elif test == "nmeta2-statistical-control":
+                start_nmeta = "false"
+                start_nmeta2 = "true"
+                policy_name = \
+                       "main_policy_regression_statistical_control.yaml"
+            else:
+                print "ERROR: unknown test type", test
+                sys.exit()
+            playbook_cmd = "ansible-playbook " + PLAYBOOK
+            playbook_cmd += " --extra-vars "
+            playbook_cmd += "\"start_nmeta=" + start_nmeta
+            playbook_cmd += " start_nmeta2=" + start_nmeta2
+            playbook_cmd += " duration=" + DURATION
+            playbook_cmd += " results_dir=" + test_dir + "/"
+            playbook_cmd += " policy_name=" + policy_name
+            playbook_cmd += "\""
+            print "playbook_cmd is", playbook_cmd
+
+            print "running Ansible playbook..."
+            os.system(playbook_cmd)
+
+            #*** Retrieve Ansible log:
+            timenow = datetime.datetime.now()
+            timestamp_ansible = timenow.strftime("%Y%m%d%H%M%S")
+            dest_filename = timestamp_ansible + "-finished-ansible.log"
+            ansible_log_dst = os.path.join(test_dir, dest_filename)
+            os.rename("/tmp/ansible.log", ansible_log_dst)
             os.mknod("/tmp/ansible.log")
-        #*** Set up test-specific parameters:
-        if test == "nmeta2-statistical-active":
-            start_nmeta="false"
-            start_nmeta2="true"
-            policy_name="main_policy_regression_statistical.yaml"
-        elif test == "nmeta2-statistical-passive":
-            start_nmeta="false"
-            start_nmeta2="true"
-            policy_name="main_policy_regression_statistical_passive.yaml"
-        elif test == "nmeta2-statistical-control":
-            start_nmeta="false"
-            start_nmeta2="true"
-            policy_name="main_policy_regression_statistical_control.yaml"
-        else:
-            print "ERROR: unknown test type", test
-            sys.exit()
-        playbook_cmd = "ansible-playbook " + playbook + " --extra-vars "
-        playbook_cmd += "\"start_nmeta=" + start_nmeta
-        playbook_cmd += " start_nmeta2=" + start_nmeta2
-        playbook_cmd += " duration=" + duration
-        playbook_cmd += " results_dir=" + test_dir + "/"
-        playbook_cmd += " policy_name=" + policy_name
-        playbook_cmd += "\""
-        print "playbook_cmd is", playbook_cmd
-        
-        print "running Ansible playbook..."
-        os.system(playbook_cmd)
 
-        #*** Retrieve Ansible log:
-        timenow = datetime.datetime.now()
-        timestamp_ansible = timenow.strftime("%Y%m%d%H%M%S")
-        dest_filename = timestamp_ansible + "-finished-ansible.log"
-        ansible_log_dst = os.path.join(test_dir, dest_filename)
-        os.rename("/tmp/ansible.log", ansible_log_dst)
-        os.mknod("/tmp/ansible.log")
-            
-        print "Sleeping... zzzz"
-        time.sleep(30)
-        
+            print "Sleeping... zzzz"
+            time.sleep(30)
+
+if __name__ == '__main__':
+    main()
+
