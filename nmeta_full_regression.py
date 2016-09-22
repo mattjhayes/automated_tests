@@ -33,7 +33,8 @@ import coloredlogs
 STATIC_REPEATS = 3
 STATIC_TESTS = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
 STATIC_DURATION = 10
-STATIC_PLAYBOOK = 'regression-static-full-template.yml'
+STATIC_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
+STATIC_PAUSE_SWITCH2CONTROLLER = 30
 STATIC_SLEEP = 30
 
 def main(argv):
@@ -57,7 +58,7 @@ def main(argv):
     #*** Timestamp for results root directory:
     timenow = datetime.datetime.now()
     timestamp = timenow.strftime("%Y%m%d%H%M%S")
-    logger.info("timestamp is %s", timestamp)
+    logger.info("root results timestamp is %s", timestamp)
 
     #*** Directory base path to write results to:
     home_dir = expanduser("~")
@@ -91,8 +92,12 @@ def regression_static(logger, basedir, playbook_dir):
     #*** Run tests
     for i in range(STATIC_REPEATS):
         for test in STATIC_TESTS:
+            #*** Timestamp for specific test subdirectory:
+            timenow = datetime.datetime.now()
+            testdir_timestamp = timenow.strftime("%Y%m%d%H%M%S")
             logger.info("running test=%s", test)
-            test_dir = os.path.join(test_basedir, test)
+            test_dir = os.path.join(test_basedir, test,
+                                                    testdir_timestamp)
             if test == "constrained-bw-tcp1234":
                 policy_name = "main_policy_regression_static.yaml"
             elif test == "constrained-bw-tcp5555":
@@ -105,6 +110,8 @@ def regression_static(logger, basedir, playbook_dir):
             playbook_cmd += "\"duration=" + str(STATIC_DURATION)
             playbook_cmd += " results_dir=" + test_dir + "/"
             playbook_cmd += " policy_name=" + policy_name
+            playbook_cmd += " pause1=" + \
+                                    str(STATIC_PAUSE_SWITCH2CONTROLLER)
             playbook_cmd += "\""
             logger.debug("playbook_cmd=%s", playbook_cmd)
             logger.info("running Ansible playbook...")
