@@ -32,7 +32,7 @@
         chdir: ~/ryu
 
     - name: Run Ryu with nmeta on controller in the background
-      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta/nmeta.py &"
       args:
         chdir: ~/ryu
       async: 90000
@@ -79,9 +79,7 @@
     - debug: msg="Creating local and remote result folders..."
 
     - name: Create local results folder
-      local_action: shell mkdir {{ results_dir }}
-      register: create_local_results_folder
-      run_once: true
+      file: path={{ results_dir }} state=directory
 
     - name: Create client results folder
       file: path={{ results_dir }} state=directory
