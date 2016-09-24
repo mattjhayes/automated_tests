@@ -30,7 +30,7 @@ import logging.handlers
 import coloredlogs
 
 #*** Parameters for regression of static classification:
-STATIC_REPEATS = 3
+STATIC_REPEATS = 1
 STATIC_TESTS = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
 STATIC_DURATION = 10
 STATIC_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
@@ -75,7 +75,9 @@ def main(argv):
     logger.info("base directory is %s", basedir)
 
     #*** Run static regression testing:
-    regression_static(logger, basedir, playbook_dir)
+    regression_static_results = \
+                    regression_static(logger, basedir, playbook_dir)    
+
 
 def regression_static(logger, basedir, playbook_dir):
     """
@@ -118,7 +120,30 @@ def regression_static(logger, basedir, playbook_dir):
             os.system(playbook_cmd)
             logger.info("Sleeping... zzzz")
             time.sleep(STATIC_SLEEP)
+    #*** Analyse static regression results:
+    #~/results/regression/nmeta-full/20160923220701/static/constrained-bw-tcp1234/20160923220701$ more pc1.example.com-1234-iperf_result.txt
+    resultdirs = {}
+    for test in STATIC_TESTS:
+        testtypedir = os.path.join(test_basedir, test)
+        logger.debug("getting subdirs for %s", testtypedir)
+        resultdirs[test] = get_immediate_subdirectories(testtypedir, logger)
+        logger.debug("resultdirs[%s]=%s", test, resultdirs[test])
+        
+    
 
+def get_immediate_subdirectories(base_dir, logger):
+    """
+    Pass this a function a directory path and it
+    will return a list of full-path subdirectories
+    off that directory (empty list if none)
+    """
+    result = []
+    for name in os.listdir(base_dir):
+        logger.debug("is %s a directory?", name)
+        if os.path.isdir(name):
+            logger.debug("yes, %s is a directory", name)
+            result.append(os.path.join(a_dir, name))
+    return result
 
 if __name__ == "__main__":
     #*** Run the main function with command line

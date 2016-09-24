@@ -122,15 +122,15 @@
   tasks:
 
     - name: Copy NFPS main config file into place
-      command: "cp ~/nmeta/config/tests/nfps_load/main_policy_nfps_load.yaml ~/nmeta/config/main_policy.yaml"
+      command: "cp ~/nmeta/nmeta/config/tests/nfps_load/main_policy_nfps_load.yaml ~/nmeta/nmeta/config/main_policy.yaml"
       when: start_nmeta
 
     - name: Copy static regression qos config file into place
-      command: "cp ~/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/config/qos_policy.yaml"
+      command: "cp ~/nmeta/nmeta/config/tests/regression/qos_policy_regression.yaml ~/nmeta/nmeta/config/qos_policy.yaml"
       when: start_nmeta
 
     - name: Copy standard config file into place
-      command: "cp ~/nmeta/config/tests/config_standard.yaml ~/nmeta/config/config.yaml"
+      command: "cp ~/nmeta/nmeta/config/tests/config_standard.yaml ~/nmeta/nmeta/config/config.yaml"
       when: start_nmeta
 
     - name: Copy NFPS main config file into place
@@ -151,7 +151,7 @@
         chdir: ~/ryu
 
     - name: Run Ryu with nmeta (if required) on controller in the background
-      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta.py &"
+      shell: "nohup ~/ryu/bin/ryu-manager ~/nmeta/nmeta/nmeta.py &"
       args:
         chdir: ~/ryu
       async: 90000
@@ -507,7 +507,7 @@
   tasks:
 
     - name: ct1 Retrieve the main policy file
-      fetch: src=~/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
+      fetch: src=~/nmeta/nmeta/config/main_policy.yaml dest={{ results_dir }}{{ hostvars[groups['clients'][0]].results_timestamp.stdout }}/ flat=yes
       when: start_nmeta
 
     - name: ct1 Retrieve the main policy file
