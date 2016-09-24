@@ -118,17 +118,31 @@ def regression_static(logger, basedir, playbook_dir):
             logger.debug("playbook_cmd=%s", playbook_cmd)
             logger.info("running Ansible playbook...")
             os.system(playbook_cmd)
+
+            #*** Analyse static regression results:
+            logger.info("Reading results in directory %s", test_dir)
+
+            # TBD here:
+            file1 = os.path.join(test_dir,
+                                'pc1.example.com-1234-iperf_result.txt')
+            
+            with open(file1) as filehandle:
+                data = filehandle.read()
+                data = data.split(",")
+                print "data is", data
+                #*** The result is in position index 8 and has newline:
+                result = str(data[8]).rstrip()
+                print "result is", result
+
+
             logger.info("Sleeping... zzzz")
             time.sleep(STATIC_SLEEP)
-    #*** Analyse static regression results:
+    
     #~/results/regression/nmeta-full/20160923220701/static/constrained-bw-tcp1234/20160923220701$ more pc1.example.com-1234-iperf_result.txt
-    resultdirs = {}
-    for test in STATIC_TESTS:
-        testtypedir = os.path.join(test_basedir, test)
-        logger.debug("getting subdirs for %s", testtypedir)
-        resultdirs[test] = get_immediate_subdirectories(testtypedir, logger)
-        logger.debug("resultdirs[%s]=%s", test, resultdirs[test])
-        
+
+    #20160923220804,10.1.0.1,34237,10.1.0.2,1234,3,0.0-22.9,393216,137364
+
+    #timestamp,source_address,source_port,destination_address,destination_port,interval,transferred_bytes,bits_per_second
     
 
 def get_immediate_subdirectories(base_dir, logger):
