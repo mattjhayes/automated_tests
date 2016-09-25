@@ -21,6 +21,8 @@ nmeta updates a breeze...
 Fails as soon as there is an issue, by design, to avoid
 unnecessary time to be advised of regression issue that
 needs fixing
+
+Provides quantitative (performance) and qualitative (pass test) data
 """
 import datetime
 import os
@@ -32,6 +34,13 @@ import sys
 import logging
 import logging.handlers
 import coloredlogs
+
+#*** Filename for results to be written to:
+LOGGING_FILENAME = 'test_results.txt'
+LOGGING_FILE_LEVEL = logging.INFO
+#LOGGING_FILE_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+LOGGING_FILE_FORMAT = "%(asctime)s %(levelname)s: %(name)s " \
+                            "%(funcName)s: %(message)s"
 
 #*** Parameters for regression of static classification:
 STATIC_REPEATS = 1
@@ -82,9 +91,16 @@ def main(argv):
     basedir = os.path.join(results_dir, timestamp)
     logger.info("base directory is %s", basedir)
 
+    #*** Set up logging to file in the root dir for these results:
+    logging_file = os.path.join(basedir, LOGGING_FILENAME)
+    logging_fh = logging.FileHandler(logging_file)
+    logging_fh.setLevel(LOGGING_FILE_LEVEL)
+    formatter = logging.Formatter(LOGGING_FILE_FORMAT)
+    logging_fh.setFormatter(formatter)
+    logger.addHandler(logging_fh)
+
     #*** Run static regression testing:
-    regression_static_results = \
-                    regression_static(logger, basedir, playbook_dir)
+    regression_static(logger, basedir, playbook_dir)
 
 
 def regression_static(logger, basedir, playbook_dir):
@@ -155,12 +171,12 @@ def regression_static(logger, basedir, playbook_dir):
                     #*** Passed the test:
                     logger.info("TEST PASSED. test=%s", test)
                 else:
-                    #*** Test failed
+                    #*** Test failed:
                     logger.critical("TEST FAILED. test=%s", test)
                     if not results[STATIC_TEST_FILES[0]] < \
                                     STATIC_TEST_THRESHOLD_CONSTRAINED:
                         logger.warning("Failed to constraing bandwidth")
-                    if not results[STATIC_TEST_FILES[1]] < \
+                    if not results[STATIC_TEST_FILES[1]] > \
                                     STATIC_TEST_THRESHOLD_UNCONSTRAINED:
                         logger.warning("Unconstraing bandwidth too low")
                     sys.exit("Please fix code. Exiting...")
@@ -177,12 +193,12 @@ def regression_static(logger, basedir, playbook_dir):
                     #*** Passed the test:
                     logger.info("TEST PASSED. test=%s", test)
                 else:
-                    #*** Test failed
+                    #*** Test failed:
                     logger.critical("TEST FAILED. test=%s", test)
                     if not results[STATIC_TEST_FILES[1]] < \
                                     STATIC_TEST_THRESHOLD_CONSTRAINED:
                         logger.warning("Failed to constraing bandwidth")
-                    if not results[STATIC_TEST_FILES[0]] < \
+                    if not results[STATIC_TEST_FILES[0]] > \
                                     STATIC_TEST_THRESHOLD_UNCONSTRAINED:
                         logger.warning("Unconstraing bandwidth too low")
                     sys.exit("Please fix code. Exiting...")
@@ -194,13 +210,6 @@ def regression_static(logger, basedir, playbook_dir):
             logger.info("Sleeping... zzzz")
             time.sleep(STATIC_SLEEP)
 
-        # TBD: Return results?
-    
-    #~/results/regression/nmeta-full/20160923220701/static/constrained-bw-tcp1234/20160923220701$ more pc1.example.com-1234-iperf_result.txt
-
-    #20160923220804,10.1.0.1,34237,10.1.0.2,1234,3,0.0-22.9,393216,137364
-
-    #timestamp,source_address,source_port,destination_address,destination_port,interval,transferred_bytes,bits_per_second
 
 if __name__ == "__main__":
     #*** Run the main function with command line
