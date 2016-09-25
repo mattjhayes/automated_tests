@@ -17,6 +17,10 @@
 Run full suite of nmeta regression tests
 in an easy automated manner to make regression testing
 nmeta updates a breeze...
+
+Fails as soon as there is an issue, by design, to avoid
+unnecessary time to be advised of regression issue that
+needs fixing
 """
 import datetime
 import os
@@ -32,6 +36,10 @@ import coloredlogs
 #*** Parameters for regression of static classification:
 STATIC_REPEATS = 1
 STATIC_TESTS = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
+STATIC_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
+                    "pc1.example.com-5555-iperf_result.txt"]
+STATIC_TEST_THRESHOLD_CONSTRAINED = 200000
+STATIC_TEST_THRESHOLD_UNCONSTRAINED = 1000000
 STATIC_DURATION = 10
 STATIC_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
 STATIC_PAUSE_SWITCH2CONTROLLER = 30
@@ -76,7 +84,7 @@ def main(argv):
 
     #*** Run static regression testing:
     regression_static_results = \
-                    regression_static(logger, basedir, playbook_dir)    
+                    regression_static(logger, basedir, playbook_dir)
 
 
 def regression_static(logger, basedir, playbook_dir):
@@ -121,43 +129,78 @@ def regression_static(logger, basedir, playbook_dir):
 
             #*** Analyse static regression results:
             logger.info("Reading results in directory %s", test_dir)
+            results = {}
+            for filename in STATIC_TEST_FILES:
+                filename_full = os.path.join(test_dir, filename)
+                with open(filename_full) as filehandle:
+                    data = filehandle.read()
+                    data = data.split(",")
+                    #*** The result is in position index 8
+                    #*** and remove trailing newline:
+                    results[filename] = int(str(data[8]).rstrip())
+                    logger.debug("filename=%s data=%s result=%s bps",
+                                    filename, data, results[filename])
 
-            # TBD here:
-            file1 = os.path.join(test_dir,
-                                'pc1.example.com-1234-iperf_result.txt')
+            #*** Validate that the results are as expected:
+            if test == STATIC_TESTS[0]:
+                logger.debug("Checking %s lt %s and %s gt %s",
+                            results[STATIC_TEST_FILES[0]],
+                            STATIC_TEST_THRESHOLD_CONSTRAINED,
+                            results[STATIC_TEST_FILES[1]],
+                            STATIC_TEST_THRESHOLD_UNCONSTRAINED)
+                if (results[STATIC_TEST_FILES[0]] < \
+                        STATIC_TEST_THRESHOLD_CONSTRAINED) and \
+                        (results[STATIC_TEST_FILES[1]] > \
+                        STATIC_TEST_THRESHOLD_UNCONSTRAINED):
+                    #*** Passed the test:
+                    logger.info("TEST PASSED. test=%s", test)
+                else:
+                    #*** Test failed
+                    logger.critical("TEST FAILED. test=%s", test)
+                    if not results[STATIC_TEST_FILES[0]] < \
+                                    STATIC_TEST_THRESHOLD_CONSTRAINED:
+                        logger.warning("Failed to constraing bandwidth")
+                    if not results[STATIC_TEST_FILES[1]] < \
+                                    STATIC_TEST_THRESHOLD_UNCONSTRAINED:
+                        logger.warning("Unconstraing bandwidth too low")
+                    sys.exit("Please fix code. Exiting...")
+            elif test == STATIC_TESTS[1]:
+                logger.debug("Checking %s lt %s and %s gt %s",
+                            results[STATIC_TEST_FILES[1]],
+                            STATIC_TEST_THRESHOLD_CONSTRAINED,
+                            results[STATIC_TEST_FILES[0]],
+                            STATIC_TEST_THRESHOLD_UNCONSTRAINED)
+                if (results[STATIC_TEST_FILES[1]] < \
+                        STATIC_TEST_THRESHOLD_CONSTRAINED) and \
+                        (results[STATIC_TEST_FILES[0]] > \
+                        STATIC_TEST_THRESHOLD_UNCONSTRAINED):
+                    #*** Passed the test:
+                    logger.info("TEST PASSED. test=%s", test)
+                else:
+                    #*** Test failed
+                    logger.critical("TEST FAILED. test=%s", test)
+                    if not results[STATIC_TEST_FILES[1]] < \
+                                    STATIC_TEST_THRESHOLD_CONSTRAINED:
+                        logger.warning("Failed to constraing bandwidth")
+                    if not results[STATIC_TEST_FILES[0]] < \
+                                    STATIC_TEST_THRESHOLD_UNCONSTRAINED:
+                        logger.warning("Unconstraing bandwidth too low")
+                    sys.exit("Please fix code. Exiting...")
+            else:
+                #*** Unknown error condition:
+                logger.critical("UNKNOWN TEST TYPE. test=%s", test)
+                sys.exit("Please fix this test code. Exiting...")
             
-            with open(file1) as filehandle:
-                data = filehandle.read()
-                data = data.split(",")
-                print "data is", data
-                #*** The result is in position index 8 and has newline:
-                result = str(data[8]).rstrip()
-                print "result is", result
-
-
             logger.info("Sleeping... zzzz")
             time.sleep(STATIC_SLEEP)
+
+        # TBD: Return results?
     
     #~/results/regression/nmeta-full/20160923220701/static/constrained-bw-tcp1234/20160923220701$ more pc1.example.com-1234-iperf_result.txt
 
     #20160923220804,10.1.0.1,34237,10.1.0.2,1234,3,0.0-22.9,393216,137364
 
     #timestamp,source_address,source_port,destination_address,destination_port,interval,transferred_bytes,bits_per_second
-    
-
-def get_immediate_subdirectories(base_dir, logger):
-    """
-    Pass this a function a directory path and it
-    will return a list of full-path subdirectories
-    off that directory (empty list if none)
-    """
-    result = []
-    for name in os.listdir(base_dir):
-        logger.debug("is %s a directory?", name)
-        if os.path.isdir(name):
-            logger.debug("yes, %s is a directory", name)
-            result.append(os.path.join(a_dir, name))
-    return result
 
 if __name__ == "__main__":
     #*** Run the main function with command line
