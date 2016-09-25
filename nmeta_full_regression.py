@@ -38,32 +38,27 @@ import coloredlogs
 #*** Filename for results to be written to:
 LOGGING_FILENAME = 'test_results.txt'
 LOGGING_FILE_LEVEL = logging.INFO
-#LOGGING_FILE_FORMAT = '%(asctime)s %(levelname)s %(message)s'
-LOGGING_FILE_FORMAT = "%(asctime)s %(levelname)s: %(name)s " \
+LOGGING_FILE_FORMAT = "%(asctime)s %(levelname)s: " \
                             "%(funcName)s: %(message)s"
 
 #*** Parameters for capture of environment configuration:
 ENVIRONMENT_PLAYBOOK = 'nmeta-full-regression-environment-template.yml'
 
-#*** Parameters for regression of static classification:
+#*** Parameters for regression of Static classification:
 STATIC_REPEATS = 1
 STATIC_TESTS = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
-STATIC_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
-                    "pc1.example.com-5555-iperf_result.txt"]
-STATIC_TEST_THRESHOLD_CONSTRAINED = 200000
-STATIC_TEST_THRESHOLD_UNCONSTRAINED = 1000000
 STATIC_DURATION = 10
 STATIC_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
 STATIC_PAUSE_SWITCH2CONTROLLER = 30
 STATIC_SLEEP = 30
+STATIC_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
+                    "pc1.example.com-5555-iperf_result.txt"]
+STATIC_TEST_THRESHOLD_CONSTRAINED = 200000
+STATIC_TEST_THRESHOLD_UNCONSTRAINED = 1000000
 
-#*** Parameters for regression of identity classification:
+#*** Parameters for regression of Identity classification:
 IDENTITY_REPEATS = 1
 IDENTITY_TESTS = ["lg1-constrained-bw", "pc1-constrained-bw"]
-#IDENTITY_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
-#                    "pc1.example.com-5555-iperf_result.txt"]
-#IDENTITY_TEST_THRESHOLD_CONSTRAINED = 200000
-#IDENTITY_TEST_THRESHOLD_UNCONSTRAINED = 1000000
 IDENTITY_DURATION = 10
 IDENTITY_PLAYBOOK = 'nmeta-full-regression-identity-template.yml'
 IDENTITY_TCP_PORT = 5555
@@ -71,6 +66,10 @@ IDENTITY_PAUSE1_SWITCH2CONTROLLER = 10
 IDENTITY_PAUSE2_LLDPLEARN = 30
 IDENTITY_PAUSE3_INTERTEST = 6
 IDENTITY_SLEEP = 30
+#IDENTITY_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
+#                    "pc1.example.com-5555-iperf_result.txt"]
+#IDENTITY_TEST_THRESHOLD_CONSTRAINED = 200000
+#IDENTITY_TEST_THRESHOLD_UNCONSTRAINED = 1000000
 
 def main(argv):
     """
@@ -234,8 +233,8 @@ def regression_static(logger, basedir, playbook_dir):
                     #*** Passed the test:
                     logger.info("TEST PASSED. test=%s", test)
                     logger.info("constrained_bw=%s unconstrained_bw=%s",
-                                results[STATIC_TEST_FILES[0]],
-                                results[STATIC_TEST_FILES[1]])
+                                results[STATIC_TEST_FILES[1]],
+                                results[STATIC_TEST_FILES[0]])
                 else:
                     #*** Test failed:
                     logger.critical("TEST FAILED. test=%s", test)
