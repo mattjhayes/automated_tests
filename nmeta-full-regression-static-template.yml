@@ -8,7 +8,7 @@
 #*** Example nmeta baseline:
 #***   ansible-playbook ~/automated_tests/nmeta-full-regression-static-template.yml --extra-vars "duration=10 results_dir=~/results/regression/nmeta-full/20160922222553/static/constrained-bw-tcp1234/20160922223154/ policy_name=main_policy_regression_static_2.yaml pause1=30"
 
-#*** Start by ensuring nmeta is not running then start it if required:
+#*** Start by ensuring nmeta is not running then start it:
 - hosts: controllers
 
   tasks:
@@ -77,9 +77,6 @@
     - debug: msg="Result folder is {{ results_dir }}"
 
     - debug: msg="Creating local and remote result folders..."
-
-    - name: Create local results folder
-      file: path={{ results_dir }} state=directory
 
     - name: Create client results folder
       file: path={{ results_dir }} state=directory

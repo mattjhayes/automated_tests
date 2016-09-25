@@ -42,6 +42,9 @@ LOGGING_FILE_LEVEL = logging.INFO
 LOGGING_FILE_FORMAT = "%(asctime)s %(levelname)s: %(name)s " \
                             "%(funcName)s: %(message)s"
 
+#*** Parameters for capture of environment configuration:
+ENVIRONMENT_PLAYBOOK = 'nmeta-full-regression-environment-template.yml'
+
 #*** Parameters for regression of static classification:
 STATIC_REPEATS = 1
 STATIC_TESTS = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
@@ -53,6 +56,21 @@ STATIC_DURATION = 10
 STATIC_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
 STATIC_PAUSE_SWITCH2CONTROLLER = 30
 STATIC_SLEEP = 30
+
+#*** Parameters for regression of identity classification:
+IDENTITY_REPEATS = 1
+IDENTITY_TESTS = ["lg1-constrained-bw", "pc1-constrained-bw"]
+#IDENTITY_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
+#                    "pc1.example.com-5555-iperf_result.txt"]
+#IDENTITY_TEST_THRESHOLD_CONSTRAINED = 200000
+#IDENTITY_TEST_THRESHOLD_UNCONSTRAINED = 1000000
+IDENTITY_DURATION = 10
+IDENTITY_PLAYBOOK = 'nmeta-full-regression-identity-template.yml'
+IDENTITY_TCP_PORT = 5555
+IDENTITY_PAUSE1_SWITCH2CONTROLLER = 10
+IDENTITY_PAUSE2_LLDPLEARN = 30
+IDENTITY_PAUSE3_INTERTEST = 6
+IDENTITY_SLEEP = 30
 
 def main(argv):
     """
@@ -99,9 +117,29 @@ def main(argv):
     logging_fh.setFormatter(formatter)
     logger.addHandler(logging_fh)
 
+    #*** Capture environment settings:
+    regression_environment(logger, basedir, playbook_dir)
+
     #*** Run static regression testing:
     regression_static(logger, basedir, playbook_dir)
 
+    #*** Run identity regression testing:
+    regression_identity(logger, basedir, playbook_dir)
+
+def regression_environment(logger, basedir, playbook_dir):
+    """
+    Capture details of the environment including info
+    on the nmeta build
+    """
+    playbook = os.path.join(playbook_dir, ENVIRONMENT_PLAYBOOK)
+    logger.debug("playbook is %s", playbook)
+    playbook_cmd = "ansible-playbook " + playbook
+    playbook_cmd += " --extra-vars "
+    playbook_cmd += "\"results_dir=" + basedir + "/"
+    playbook_cmd += "\""
+    logger.debug("playbook_cmd=%s", playbook_cmd)
+    logger.info("running Ansible playbook...")
+    os.system(playbook_cmd)
 
 def regression_static(logger, basedir, playbook_dir):
     """
@@ -129,7 +167,7 @@ def regression_static(logger, basedir, playbook_dir):
             elif test == "constrained-bw-tcp5555":
                 policy_name = "main_policy_regression_static_2.yaml"
             else:
-                print "ERROR: unknown test type", test
+                print "ERROR: unknown static test type", test
                 sys.exit()
             playbook_cmd = "ansible-playbook " + playbook
             playbook_cmd += " --extra-vars "
@@ -144,7 +182,7 @@ def regression_static(logger, basedir, playbook_dir):
             os.system(playbook_cmd)
 
             #*** Analyse static regression results:
-            logger.info("Reading results in directory %s", test_dir)
+            logger.debug("Reading results in directory %s", test_dir)
             results = {}
             for filename in STATIC_TEST_FILES:
                 filename_full = os.path.join(test_dir, filename)
@@ -170,6 +208,9 @@ def regression_static(logger, basedir, playbook_dir):
                         STATIC_TEST_THRESHOLD_UNCONSTRAINED):
                     #*** Passed the test:
                     logger.info("TEST PASSED. test=%s", test)
+                    logger.info("constrained_bw=%s unconstrained_bw=%s",
+                                results[STATIC_TEST_FILES[0]],
+                                results[STATIC_TEST_FILES[1]])
                 else:
                     #*** Test failed:
                     logger.critical("TEST FAILED. test=%s", test)
@@ -192,6 +233,9 @@ def regression_static(logger, basedir, playbook_dir):
                         STATIC_TEST_THRESHOLD_UNCONSTRAINED):
                     #*** Passed the test:
                     logger.info("TEST PASSED. test=%s", test)
+                    logger.info("constrained_bw=%s unconstrained_bw=%s",
+                                results[STATIC_TEST_FILES[0]],
+                                results[STATIC_TEST_FILES[1]])
                 else:
                     #*** Test failed:
                     logger.critical("TEST FAILED. test=%s", test)
@@ -206,7 +250,56 @@ def regression_static(logger, basedir, playbook_dir):
                 #*** Unknown error condition:
                 logger.critical("UNKNOWN TEST TYPE. test=%s", test)
                 sys.exit("Please fix this test code. Exiting...")
-            
+
+            logger.info("Sleeping... zzzz")
+            time.sleep(STATIC_SLEEP)
+
+def regression_identity(logger, basedir, playbook_dir):
+    """
+    Nmeta identity classification regression testing
+    """
+    logger.info("running identity regression testing")
+    subdir = 'identity'
+    #*** Create subdirectory to write results to:
+    os.chdir(basedir)
+    os.mkdir(subdir)
+    test_basedir = os.path.join(basedir, subdir)
+    playbook = os.path.join(playbook_dir, IDENTITY_PLAYBOOK)
+    logger.debug("playbook is %s", playbook)
+    #*** Run tests
+    for i in range(IDENTITY_REPEATS):
+        for test in IDENTITY_TESTS:
+            #*** Timestamp for specific test subdirectory:
+            timenow = datetime.datetime.now()
+            testdir_timestamp = timenow.strftime("%Y%m%d%H%M%S")
+            logger.info("running test=%s", test)
+            test_dir = os.path.join(test_basedir, test,
+                                                    testdir_timestamp)
+            if test == "lg1-constrained-bw":
+                policy_name = "main_policy_regression_identity.yaml"
+            elif test == "pc1-constrained-bw":
+                policy_name = "main_policy_regression_identity_2.yaml"
+            else:
+                print "ERROR: unknown identity test type", test
+                sys.exit()
+            playbook_cmd = "ansible-playbook " + playbook
+            playbook_cmd += " --extra-vars "
+            playbook_cmd += "\"duration=" + str(IDENTITY_DURATION)
+            playbook_cmd += " results_dir=" + test_dir + "/"
+            playbook_cmd += " policy_name=" + policy_name
+            playbook_cmd += " tcp_port=" + str(IDENTITY_TCP_PORT)
+            playbook_cmd += " pause1=" + \
+                                    str(STATIC_PAUSE_SWITCH2CONTROLLER)
+            playbook_cmd += " pause2=" + \
+                                    str(IDENTITY_PAUSE2_LLDPLEARN)
+            playbook_cmd += " pause3=" + \
+                                    str(IDENTITY_PAUSE3_INTERTEST)
+            playbook_cmd += "\""
+            logger.debug("playbook_cmd=%s", playbook_cmd)
+            logger.info("running Ansible playbook...")
+            os.system(playbook_cmd)
+
+
             logger.info("Sleeping... zzzz")
             time.sleep(STATIC_SLEEP)
 
