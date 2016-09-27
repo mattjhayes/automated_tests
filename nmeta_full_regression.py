@@ -66,10 +66,14 @@ IDENTITY_PAUSE1_SWITCH2CONTROLLER = 10
 IDENTITY_PAUSE2_LLDPLEARN = 30
 IDENTITY_PAUSE3_INTERTEST = 6
 IDENTITY_SLEEP = 30
-#IDENTITY_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
-#                    "pc1.example.com-5555-iperf_result.txt"]
-#IDENTITY_TEST_THRESHOLD_CONSTRAINED = 200000
-#IDENTITY_TEST_THRESHOLD_UNCONSTRAINED = 1000000
+IDENTITY_TEST_FILES = ["lg1.example.com-iperf_result.txt",
+                    "pc1.example.com-iperf_result.txt"]
+IDENTITY_TEST_THRESHOLD_CONSTRAINED = 200000
+IDENTITY_TEST_THRESHOLD_UNCONSTRAINED = 1000000
+
+#*** Parameters for analysis of nmeta syslog events:
+LOGROTATE_PLAYBOOK = 'nmeta-full-regression-logrotate-template.yml'
+LOGCHECK_PLAYBOOK = 'nmeta-full-regression-logcheck-template.yml'
 
 def main(argv):
     """
@@ -87,7 +91,7 @@ def main(argv):
                 logger=logger,
                 fmt="%(asctime)s.%(msecs)03d %(name)s[%(process)d] " \
            "%(funcName)s %(levelname)s %(message)s", datefmt='%H:%M:%S')
-    logger.info("Logging initiated")
+    logger.info("Running full regression test of nmeta")
 
     #*** Timestamp for results root directory:
     timenow = datetime.datetime.now()
@@ -120,9 +124,11 @@ def main(argv):
     regression_environment(logger, basedir, playbook_dir)
 
     #*** Run static regression testing:
+    rotate_log(logger, playbook_dir)
     regression_static(logger, basedir, playbook_dir)
 
     #*** Run identity regression testing:
+    rotate_log(logger, playbook_dir)
     regression_identity(logger, basedir, playbook_dir)
 
 def regression_environment(logger, basedir, playbook_dir):
@@ -240,7 +246,7 @@ def regression_static(logger, basedir, playbook_dir):
                     logger.critical("TEST FAILED. test=%s", test)
                     if not results[STATIC_TEST_FILES[1]] < \
                                     STATIC_TEST_THRESHOLD_CONSTRAINED:
-                        logger.warning("Failed to constraing bandwidth")
+                        logger.warning("Failed to constrain bandwidth")
                     if not results[STATIC_TEST_FILES[0]] > \
                                     STATIC_TEST_THRESHOLD_UNCONSTRAINED:
                         logger.warning("Unconstraing bandwidth too low")
@@ -288,7 +294,7 @@ def regression_identity(logger, basedir, playbook_dir):
             playbook_cmd += " policy_name=" + policy_name
             playbook_cmd += " tcp_port=" + str(IDENTITY_TCP_PORT)
             playbook_cmd += " pause1=" + \
-                                    str(STATIC_PAUSE_SWITCH2CONTROLLER)
+                                  str(IDENTITY_PAUSE1_SWITCH2CONTROLLER)
             playbook_cmd += " pause2=" + \
                                     str(IDENTITY_PAUSE2_LLDPLEARN)
             playbook_cmd += " pause3=" + \
@@ -298,10 +304,113 @@ def regression_identity(logger, basedir, playbook_dir):
             logger.info("running Ansible playbook...")
             os.system(playbook_cmd)
 
+            #*** Analyse identity regression results:
+            logger.debug("Reading results in directory %s", test_dir)
+            results = {}
+            for filename in IDENTITY_TEST_FILES:
+                filename_full = os.path.join(test_dir, filename)
+                with open(filename_full) as filehandle:
+                    data = filehandle.read()
+                    data = data.split(",")
+                    #*** The result is in position index 8
+                    #*** and remove trailing newline:
+                    results[filename] = int(str(data[8]).rstrip())
+                    logger.debug("filename=%s data=%s result=%s bps",
+                                    filename, data, results[filename])
+
+            #*** Validate that the results are as expected:
+            if test == IDENTITY_TESTS[0]:
+                logger.debug("Checking %s lt %s and %s gt %s",
+                            results[IDENTITY_TEST_FILES[0]],
+                            IDENTITY_TEST_THRESHOLD_CONSTRAINED,
+                            results[IDENTITY_TEST_FILES[1]],
+                            IDENTITY_TEST_THRESHOLD_UNCONSTRAINED)
+                if (results[IDENTITY_TEST_FILES[0]] < \
+                        IDENTITY_TEST_THRESHOLD_CONSTRAINED) and \
+                        (results[IDENTITY_TEST_FILES[1]] > \
+                        IDENTITY_TEST_THRESHOLD_UNCONSTRAINED):
+                    #*** Passed the test:
+                    logger.info("TEST PASSED. test=%s", test)
+                    logger.info("constrained_bw=%s unconstrained_bw=%s",
+                                results[IDENTITY_TEST_FILES[0]],
+                                results[IDENTITY_TEST_FILES[1]])
+                else:
+                    #*** Test failed:
+                    logger.critical("TEST FAILED. test=%s", test)
+                    if not results[IDENTITY_TEST_FILES[0]] < \
+                                    IDENTITY_TEST_THRESHOLD_CONSTRAINED:
+                        logger.warning("Failed to constrain bandwidth")
+                    if not results[IDENTITY_TEST_FILES[1]] > \
+                                  IDENTITY_TEST_THRESHOLD_UNCONSTRAINED:
+                        logger.warning("Unconstrain bandwidth too low")
+                    sys.exit("Please fix code. Exiting...")
+            elif test == IDENTITY_TESTS[1]:
+                logger.debug("Checking %s lt %s and %s gt %s",
+                            results[IDENTITY_TEST_FILES[1]],
+                            IDENTITY_TEST_THRESHOLD_CONSTRAINED,
+                            results[IDENTITY_TEST_FILES[0]],
+                            IDENTITY_TEST_THRESHOLD_UNCONSTRAINED)
+                if (results[IDENTITY_TEST_FILES[1]] < \
+                        IDENTITY_TEST_THRESHOLD_CONSTRAINED) and \
+                        (results[IDENTITY_TEST_FILES[0]] > \
+                        IDENTITY_TEST_THRESHOLD_UNCONSTRAINED):
+                    #*** Passed the test:
+                    logger.info("TEST PASSED. test=%s", test)
+                    logger.info("constrained_bw=%s unconstrained_bw=%s",
+                                results[IDENTITY_TEST_FILES[1]],
+                                results[IDENTITY_TEST_FILES[0]])
+                else:
+                    #*** Test failed:
+                    logger.critical("TEST FAILED. test=%s", test)
+                    if not results[IDENTITY_TEST_FILES[1]] < \
+                                    IDENTITY_TEST_THRESHOLD_CONSTRAINED:
+                        logger.warning("Failed to constrain bandwidth")
+                    if not results[IDENTITY_TEST_FILES[0]] > \
+                                  IDENTITY_TEST_THRESHOLD_UNCONSTRAINED:
+                        logger.warning("Unconstrain bandwidth too low")
+                    sys.exit("Please fix code. Exiting...")
+            else:
+                #*** Unknown error condition:
+                logger.critical("UNKNOWN TEST TYPE. test=%s", test)
+                sys.exit("Please fix this test code. Exiting...")
 
             logger.info("Sleeping... zzzz")
-            time.sleep(STATIC_SLEEP)
+            time.sleep(IDENTITY_SLEEP)
 
+def rotate_log(logger, playbook_dir):
+    """
+    Run an Ansible playbook to rotate the nmeta log
+    so that it is fresh for analysis post test
+    """
+    logger.info("Rotating nmeta syslog output for freshness")
+    playbook = os.path.join(playbook_dir, LOGROTATE_PLAYBOOK)
+    logger.debug("playbook is %s", playbook)
+    playbook_cmd = "ansible-playbook " + playbook
+    playbook_cmd += "\""
+    logger.debug("playbook_cmd=%s", playbook_cmd)
+    logger.info("running Ansible playbook...")
+    os.system(playbook_cmd)
+
+def check_log(logger, playbook_dir):
+    """
+    Check the nmeta log file to see if it has any log events that
+    should cause the test to be failed so that code can be fixed
+    """
+    logger.info("Checking nmeta syslog for error or critical messages")
+    playbook = os.path.join(playbook_dir, LOGCHECK_PLAYBOOK)
+    logger.debug("playbook is %s", playbook)
+    playbook_cmd = "ansible-playbook " + playbook
+    playbook_cmd += "\""
+    logger.debug("playbook_cmd=%s", playbook_cmd)
+    logger.info("running Ansible playbook...")
+    os.system(playbook_cmd)
+
+    #*** TBD - check for presence of file:
+    
+#with file('bla.txt') as input:
+#  for count, line in enumerate(input):
+#    if re.search('foo bar', line):
+#      print line
 
 if __name__ == "__main__":
     #*** Run the main function with command line
