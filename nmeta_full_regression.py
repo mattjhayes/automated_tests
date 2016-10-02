@@ -71,6 +71,19 @@ IDENTITY_TEST_FILES = ["lg1.example.com-iperf_result.txt",
 IDENTITY_TEST_THRESHOLD_CONSTRAINED = 200000
 IDENTITY_TEST_THRESHOLD_UNCONSTRAINED = 1000000
 
+#*** Parameters for regression of Statistical classification:
+STATISTICAL_REPEATS = 1
+STATISTICAL_TESTS = ["constrained-bw-iperf", "unconstrained-bw-iperf"]
+STATISTICAL_DURATION = 10
+STATISTICAL_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
+STATISTICAL_TCP_PORT = 5555
+STATISTICAL_PAUSE_SWITCH2CONTROLLER = 10
+STATISTICAL_SLEEP = 30
+STATISTICAL_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
+                    "pc1.example.com-5555-iperf_result.txt"]
+STATISTICAL_TEST_THRESHOLD_CONSTRAINED = 200000
+STATISTICAL_TEST_THRESHOLD_UNCONSTRAINED = 1000000
+
 #*** Parameters for analysis of nmeta syslog events:
 LOGROTATE_PLAYBOOK = 'nmeta-full-regression-logrotate-template.yml'
 LOGCHECK_PLAYBOOK = 'nmeta-full-regression-logcheck-template.yml'
@@ -130,6 +143,10 @@ def main(argv):
     #*** Run identity regression testing:
     rotate_log(logger, playbook_dir)
     regression_identity(logger, basedir, playbook_dir)
+
+    #*** Run statistical regression testing:
+    rotate_log(logger, playbook_dir)
+    regression_statistical(logger, basedir, playbook_dir)
 
 def regression_environment(logger, basedir, playbook_dir):
     """
@@ -373,6 +390,67 @@ def regression_identity(logger, basedir, playbook_dir):
                 #*** Unknown error condition:
                 logger.critical("UNKNOWN TEST TYPE. test=%s", test)
                 sys.exit("Please fix this test code. Exiting...")
+
+            logger.info("Sleeping... zzzz")
+            time.sleep(IDENTITY_SLEEP)
+
+def regression_statistical(logger, basedir, playbook_dir):
+    """
+    Nmeta statistical classification regression testing
+    """
+    logger.info("running statistical regression testing")
+    subdir = 'statistical'
+    #*** Create subdirectory to write results to:
+    os.chdir(basedir)
+    os.mkdir(subdir)
+    test_basedir = os.path.join(basedir, subdir)
+    playbook = os.path.join(playbook_dir, STATISTICAL_PLAYBOOK)
+    logger.debug("playbook is %s", playbook)
+    #*** Run tests
+    for i in range(STATISTICAL_REPEATS):
+        for test in STATISTICAL_TESTS:
+            #*** Timestamp for specific test subdirectory:
+            timenow = datetime.datetime.now()
+            testdir_timestamp = timenow.strftime("%Y%m%d%H%M%S")
+            logger.info("running test=%s", test)
+            test_dir = os.path.join(test_basedir, test,
+                                                    testdir_timestamp)
+            if test == "constrained-bw-iperf":
+                policy_name = "main_policy_regression_statistical.yaml"
+            elif test == "unconstrained-bw-iperf":
+                policy_name = \
+                       "main_policy_regression_statistical_control.yaml"
+            else:
+                print "ERROR: unknown statistical test type", test
+                sys.exit()
+            playbook_cmd = "ansible-playbook " + playbook
+            playbook_cmd += " --extra-vars "
+            playbook_cmd += "\"duration=" + str(STATISTICAL_DURATION)
+            playbook_cmd += " results_dir=" + test_dir + "/"
+            playbook_cmd += " policy_name=" + policy_name
+            playbook_cmd += " tcp_port=" + str(STATISTICAL_TCP_PORT)
+            playbook_cmd += " pause1=" + \
+                               str(STATISTICAL_PAUSE_SWITCH2CONTROLLER)
+            playbook_cmd += "\""
+            logger.debug("playbook_cmd=%s", playbook_cmd)
+            logger.info("running Ansible playbook...")
+            os.system(playbook_cmd)
+
+            #*** Analyse statistical regression results:
+            logger.debug("Reading results in directory %s", test_dir)
+            results = {}
+            for filename in STATISTICAL_TEST_FILES:
+                filename_full = os.path.join(test_dir, filename)
+                with open(filename_full) as filehandle:
+                    data = filehandle.read()
+                    data = data.split(",")
+                    #*** The result is in position index 8
+                    #*** and remove trailing newline:
+                    results[filename] = int(str(data[8]).rstrip())
+                    logger.debug("filename=%s data=%s result=%s bps",
+                                    filename, data, results[filename])
+
+            # TBD HERE:
 
             logger.info("Sleeping... zzzz")
             time.sleep(IDENTITY_SLEEP)
