@@ -18,8 +18,8 @@ Run full suite of nmeta regression tests
 in an easy automated manner to make regression testing
 nmeta updates a breeze...
 
-Fails as soon as there is an issue, by design, to avoid
-unnecessary time to be advised of regression issue that
+Designed to fails as soon as there is an issue to avoid
+unnecessary time waiting to be advised of regression issue that
 needs fixing
 
 Provides quantitative (performance) and qualitative (pass test) data
@@ -75,13 +75,12 @@ IDENTITY_THRESHOLD_UNCONSTRAINED = 1000000
 STATISTICAL_REPEATS = 1
 STATISTICAL_TESTS = ["constrained-bw-iperf", "unconstrained-bw-iperf"]
 STATISTICAL_DURATION = 10
-STATISTICAL_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
+STATISTICAL_PLAYBOOK = 'nmeta-full-regression-statistical-template.yml'
 STATISTICAL_TCP_PORT = 5555
 STATISTICAL_PAUSE_SWITCH2CONTROLLER = 10
 STATISTICAL_SLEEP = 30
-STATISTICAL_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
-                    "pc1.example.com-5555-iperf_result.txt"]
-STATISTICAL_THRESHOLD_CONSTRAINED = 200000
+STATISTICAL_TEST_FILES = ["pc1.example.com-iperf_result.txt",]
+STATISTICAL_THRESHOLD_CONSTRAINED = 280000
 STATISTICAL_THRESHOLD_UNCONSTRAINED = 1000000
 
 #*** Parameters for analysis of nmeta syslog events:
@@ -134,19 +133,20 @@ def main(argv):
     logger.addHandler(logging_fh)
 
     #*** Capture environment settings:
-    regression_environment(logger, basedir, playbook_dir)
+    #regression_environment(logger, basedir, playbook_dir)
 
     #*** Run static regression testing:
-    rotate_log(logger, playbook_dir)
     regression_static(logger, basedir, playbook_dir)
 
     #*** Run identity regression testing:
-    rotate_log(logger, playbook_dir)
     regression_identity(logger, basedir, playbook_dir)
 
     #*** Run statistical regression testing:
-    rotate_log(logger, playbook_dir)
     regression_statistical(logger, basedir, playbook_dir)
+
+    #*** And we're done!:
+    logger.info("All testing finished, that's a PASS!")
+    logger.info("See test report at %s/%s", basedir, LOGGING_FILENAME)
 
 def regression_environment(logger, basedir, playbook_dir):
     """
@@ -324,6 +324,7 @@ def regression_statistical(logger, basedir, playbook_dir):
             logger.info("running test=%s", test)
             test_dir = os.path.join(test_basedir, test,
                                                     testdir_timestamp)
+            rotate_log(logger, playbook_dir)
             if test == "constrained-bw-iperf":
                 policy_name = "main_policy_regression_statistical.yaml"
             elif test == "unconstrained-bw-iperf":
@@ -345,24 +346,38 @@ def regression_statistical(logger, basedir, playbook_dir):
             logger.info("running Ansible playbook...")
             os.system(playbook_cmd)
 
+            #logger.error("THIS IS A TEST...")
+
             #*** Analyse statistical regression results:
             logger.debug("Reading results in directory %s", test_dir)
             results = {}
             for filename in STATISTICAL_TEST_FILES:
-                filename_full = os.path.join(test_dir, filename)
-                with open(filename_full) as filehandle:
-                    data = filehandle.read()
-                    data = data.split(",")
-                    #*** The result is in position index 8
-                    #*** and remove trailing newline:
-                    results[filename] = int(str(data[8]).rstrip())
-                    logger.debug("filename=%s data=%s result=%s bps",
-                                    filename, data, results[filename])
+                results[filename] = get_iperf_bw(test_dir, filename)
 
-            # TBD HERE:
+            #*** Validate that the results are as expected:
+            if test == STATISTICAL_TESTS[0]:
+                constrained = results[STATISTICAL_TEST_FILES[0]]
+                logger.info("validating statistical bw constrained=%s",
+                                                            constrained)
+                assert constrained < STATISTICAL_THRESHOLD_CONSTRAINED
+            elif test == STATISTICAL_TESTS[1]:
+                unconstrained = results[STATISTICAL_TEST_FILES[0]]
+                logger.info("validating statistical bw unconstrained=%s"
+                                                        , unconstrained)
+                assert unconstrained > \
+                                     STATISTICAL_THRESHOLD_UNCONSTRAINED
+            else:
+                #*** Unknown error condition:
+                logger.critical("UNKNOWN TEST TYPE. test=%s", test)
+                sys.exit("Please fix this test code. Exiting...")
+
+            logger.info("STATISTICAL TC TEST PASSED. test=%s", test)
+
+            #*** Check for any logs that are CRITICAL or ERROR:
+            check_log(logger, playbook_dir, test_dir)
 
             logger.info("Sleeping... zzzz")
-            time.sleep(IDENTITY_SLEEP)
+            time.sleep(STATISTICAL_SLEEP)
 
 def get_iperf_bw(test_dir, filename):
     """
@@ -389,7 +404,7 @@ def rotate_log(logger, playbook_dir):
     logger.info("running Ansible playbook...")
     os.system(playbook_cmd)
 
-def check_log(logger, playbook_dir):
+def check_log(logger, playbook_dir, test_dir):
     """
     Check the nmeta log file to see if it has any log events that
     should cause the test to be failed so that code can be fixed
@@ -398,6 +413,8 @@ def check_log(logger, playbook_dir):
     playbook = os.path.join(playbook_dir, LOGCHECK_PLAYBOOK)
     logger.debug("playbook is %s", playbook)
     playbook_cmd = "ansible-playbook " + playbook
+    playbook_cmd += " --extra-vars "
+    playbook_cmd += "\"results_dir=" + test_dir + "/"
     playbook_cmd += "\""
     logger.debug("playbook_cmd=%s", playbook_cmd)
     logger.info("running Ansible playbook...")
