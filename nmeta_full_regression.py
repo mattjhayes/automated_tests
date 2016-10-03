@@ -53,8 +53,8 @@ STATIC_PAUSE_SWITCH2CONTROLLER = 30
 STATIC_SLEEP = 30
 STATIC_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
                     "pc1.example.com-5555-iperf_result.txt"]
-STATIC_TEST_THRESHOLD_CONSTRAINED = 200000
-STATIC_TEST_THRESHOLD_UNCONSTRAINED = 1000000
+STATIC_THRESHOLD_CONSTRAINED = 200000
+STATIC_THRESHOLD_UNCONSTRAINED = 1000000
 
 #*** Parameters for regression of Identity classification:
 IDENTITY_REPEATS = 1
@@ -68,8 +68,8 @@ IDENTITY_PAUSE3_INTERTEST = 6
 IDENTITY_SLEEP = 30
 IDENTITY_TEST_FILES = ["lg1.example.com-iperf_result.txt",
                     "pc1.example.com-iperf_result.txt"]
-IDENTITY_TEST_THRESHOLD_CONSTRAINED = 200000
-IDENTITY_TEST_THRESHOLD_UNCONSTRAINED = 1000000
+IDENTITY_THRESHOLD_CONSTRAINED = 200000
+IDENTITY_THRESHOLD_UNCONSTRAINED = 1000000
 
 #*** Parameters for regression of Statistical classification:
 STATISTICAL_REPEATS = 1
@@ -81,8 +81,8 @@ STATISTICAL_PAUSE_SWITCH2CONTROLLER = 10
 STATISTICAL_SLEEP = 30
 STATISTICAL_TEST_FILES = ["pc1.example.com-1234-iperf_result.txt",
                     "pc1.example.com-5555-iperf_result.txt"]
-STATISTICAL_TEST_THRESHOLD_CONSTRAINED = 200000
-STATISTICAL_TEST_THRESHOLD_UNCONSTRAINED = 1000000
+STATISTICAL_THRESHOLD_CONSTRAINED = 200000
+STATISTICAL_THRESHOLD_UNCONSTRAINED = 1000000
 
 #*** Parameters for analysis of nmeta syslog events:
 LOGROTATE_PLAYBOOK = 'nmeta-full-regression-logrotate-template.yml'
@@ -94,7 +94,7 @@ def main(argv):
     Sets up logging, creates the timestamped directory
     and runs functions for the various regression test types
     """
-    version = "0.1.0"
+    version = "0.1.1"
 
     #*** Set up logging:
     logging.basicConfig(level=logging.DEBUG)
@@ -207,72 +207,26 @@ def regression_static(logger, basedir, playbook_dir):
             logger.debug("Reading results in directory %s", test_dir)
             results = {}
             for filename in STATIC_TEST_FILES:
-                filename_full = os.path.join(test_dir, filename)
-                with open(filename_full) as filehandle:
-                    data = filehandle.read()
-                    data = data.split(",")
-                    #*** The result is in position index 8
-                    #*** and remove trailing newline:
-                    results[filename] = int(str(data[8]).rstrip())
-                    logger.debug("filename=%s data=%s result=%s bps",
-                                    filename, data, results[filename])
+                results[filename] = get_iperf_bw(test_dir, filename)
 
             #*** Validate that the results are as expected:
             if test == STATIC_TESTS[0]:
-                logger.debug("Checking %s lt %s and %s gt %s",
-                            results[STATIC_TEST_FILES[0]],
-                            STATIC_TEST_THRESHOLD_CONSTRAINED,
-                            results[STATIC_TEST_FILES[1]],
-                            STATIC_TEST_THRESHOLD_UNCONSTRAINED)
-                if (results[STATIC_TEST_FILES[0]] < \
-                        STATIC_TEST_THRESHOLD_CONSTRAINED) and \
-                        (results[STATIC_TEST_FILES[1]] > \
-                        STATIC_TEST_THRESHOLD_UNCONSTRAINED):
-                    #*** Passed the test:
-                    logger.info("TEST PASSED. test=%s", test)
-                    logger.info("constrained_bw=%s unconstrained_bw=%s",
-                                results[STATIC_TEST_FILES[0]],
-                                results[STATIC_TEST_FILES[1]])
-                else:
-                    #*** Test failed:
-                    logger.critical("TEST FAILED. test=%s", test)
-                    if not results[STATIC_TEST_FILES[0]] < \
-                                    STATIC_TEST_THRESHOLD_CONSTRAINED:
-                        logger.warning("Failed to constraing bandwidth")
-                    if not results[STATIC_TEST_FILES[1]] > \
-                                    STATIC_TEST_THRESHOLD_UNCONSTRAINED:
-                        logger.warning("Unconstraing bandwidth too low")
-                    sys.exit("Please fix code. Exiting...")
+                constrained = results[STATIC_TEST_FILES[0]]
+                unconstrained = results[STATIC_TEST_FILES[1]]
             elif test == STATIC_TESTS[1]:
-                logger.debug("Checking %s lt %s and %s gt %s",
-                            results[STATIC_TEST_FILES[1]],
-                            STATIC_TEST_THRESHOLD_CONSTRAINED,
-                            results[STATIC_TEST_FILES[0]],
-                            STATIC_TEST_THRESHOLD_UNCONSTRAINED)
-                if (results[STATIC_TEST_FILES[1]] < \
-                        STATIC_TEST_THRESHOLD_CONSTRAINED) and \
-                        (results[STATIC_TEST_FILES[0]] > \
-                        STATIC_TEST_THRESHOLD_UNCONSTRAINED):
-                    #*** Passed the test:
-                    logger.info("TEST PASSED. test=%s", test)
-                    logger.info("constrained_bw=%s unconstrained_bw=%s",
-                                results[STATIC_TEST_FILES[1]],
-                                results[STATIC_TEST_FILES[0]])
-                else:
-                    #*** Test failed:
-                    logger.critical("TEST FAILED. test=%s", test)
-                    if not results[STATIC_TEST_FILES[1]] < \
-                                    STATIC_TEST_THRESHOLD_CONSTRAINED:
-                        logger.warning("Failed to constrain bandwidth")
-                    if not results[STATIC_TEST_FILES[0]] > \
-                                    STATIC_TEST_THRESHOLD_UNCONSTRAINED:
-                        logger.warning("Unconstraing bandwidth too low")
-                    sys.exit("Please fix code. Exiting...")
+                constrained = results[STATIC_TEST_FILES[1]]
+                unconstrained = results[STATIC_TEST_FILES[0]]
             else:
                 #*** Unknown error condition:
                 logger.critical("UNKNOWN TEST TYPE. test=%s", test)
                 sys.exit("Please fix this test code. Exiting...")
-
+            logger.info("validating bw constrained=%s unconstrained=%s",
+                                             constrained, unconstrained)
+            assert constrained < STATIC_THRESHOLD_CONSTRAINED
+            assert unconstrained > STATIC_THRESHOLD_UNCONSTRAINED
+            logger.info("STATIC TC TEST PASSED. test=%s", test)
+            logger.info("bandwidth constrained=%s unconstrained=%s",
+                                constrained, unconstrained)
             logger.info("Sleeping... zzzz")
             time.sleep(STATIC_SLEEP)
 
@@ -325,71 +279,26 @@ def regression_identity(logger, basedir, playbook_dir):
             logger.debug("Reading results in directory %s", test_dir)
             results = {}
             for filename in IDENTITY_TEST_FILES:
-                filename_full = os.path.join(test_dir, filename)
-                with open(filename_full) as filehandle:
-                    data = filehandle.read()
-                    data = data.split(",")
-                    #*** The result is in position index 8
-                    #*** and remove trailing newline:
-                    results[filename] = int(str(data[8]).rstrip())
-                    logger.debug("filename=%s data=%s result=%s bps",
-                                    filename, data, results[filename])
+                results[filename] = get_iperf_bw(test_dir, filename)
 
             #*** Validate that the results are as expected:
             if test == IDENTITY_TESTS[0]:
-                logger.debug("Checking %s lt %s and %s gt %s",
-                            results[IDENTITY_TEST_FILES[0]],
-                            IDENTITY_TEST_THRESHOLD_CONSTRAINED,
-                            results[IDENTITY_TEST_FILES[1]],
-                            IDENTITY_TEST_THRESHOLD_UNCONSTRAINED)
-                if (results[IDENTITY_TEST_FILES[0]] < \
-                        IDENTITY_TEST_THRESHOLD_CONSTRAINED) and \
-                        (results[IDENTITY_TEST_FILES[1]] > \
-                        IDENTITY_TEST_THRESHOLD_UNCONSTRAINED):
-                    #*** Passed the test:
-                    logger.info("TEST PASSED. test=%s", test)
-                    logger.info("constrained_bw=%s unconstrained_bw=%s",
-                                results[IDENTITY_TEST_FILES[0]],
-                                results[IDENTITY_TEST_FILES[1]])
-                else:
-                    #*** Test failed:
-                    logger.critical("TEST FAILED. test=%s", test)
-                    if not results[IDENTITY_TEST_FILES[0]] < \
-                                    IDENTITY_TEST_THRESHOLD_CONSTRAINED:
-                        logger.warning("Failed to constrain bandwidth")
-                    if not results[IDENTITY_TEST_FILES[1]] > \
-                                  IDENTITY_TEST_THRESHOLD_UNCONSTRAINED:
-                        logger.warning("Unconstrain bandwidth too low")
-                    sys.exit("Please fix code. Exiting...")
+                constrained = results[IDENTITY_TEST_FILES[0]]
+                unconstrained = results[IDENTITY_TEST_FILES[1]]
             elif test == IDENTITY_TESTS[1]:
-                logger.debug("Checking %s lt %s and %s gt %s",
-                            results[IDENTITY_TEST_FILES[1]],
-                            IDENTITY_TEST_THRESHOLD_CONSTRAINED,
-                            results[IDENTITY_TEST_FILES[0]],
-                            IDENTITY_TEST_THRESHOLD_UNCONSTRAINED)
-                if (results[IDENTITY_TEST_FILES[1]] < \
-                        IDENTITY_TEST_THRESHOLD_CONSTRAINED) and \
-                        (results[IDENTITY_TEST_FILES[0]] > \
-                        IDENTITY_TEST_THRESHOLD_UNCONSTRAINED):
-                    #*** Passed the test:
-                    logger.info("TEST PASSED. test=%s", test)
-                    logger.info("constrained_bw=%s unconstrained_bw=%s",
-                                results[IDENTITY_TEST_FILES[1]],
-                                results[IDENTITY_TEST_FILES[0]])
-                else:
-                    #*** Test failed:
-                    logger.critical("TEST FAILED. test=%s", test)
-                    if not results[IDENTITY_TEST_FILES[1]] < \
-                                    IDENTITY_TEST_THRESHOLD_CONSTRAINED:
-                        logger.warning("Failed to constrain bandwidth")
-                    if not results[IDENTITY_TEST_FILES[0]] > \
-                                  IDENTITY_TEST_THRESHOLD_UNCONSTRAINED:
-                        logger.warning("Unconstrain bandwidth too low")
-                    sys.exit("Please fix code. Exiting...")
+                constrained = results[IDENTITY_TEST_FILES[1]]
+                unconstrained = results[IDENTITY_TEST_FILES[0]]
             else:
                 #*** Unknown error condition:
                 logger.critical("UNKNOWN TEST TYPE. test=%s", test)
                 sys.exit("Please fix this test code. Exiting...")
+            logger.info("validating bw constrained=%s unconstrained=%s",
+                                             constrained, unconstrained)
+            assert constrained < IDENTITY_THRESHOLD_CONSTRAINED
+            assert unconstrained > IDENTITY_THRESHOLD_UNCONSTRAINED
+            logger.info("IDENTITY TC TEST PASSED. test=%s", test)
+            logger.info("bandwidth constrained=%s unconstrained=%s",
+                                constrained, unconstrained)
 
             logger.info("Sleeping... zzzz")
             time.sleep(IDENTITY_SLEEP)
@@ -455,6 +364,18 @@ def regression_statistical(logger, basedir, playbook_dir):
             logger.info("Sleeping... zzzz")
             time.sleep(IDENTITY_SLEEP)
 
+def get_iperf_bw(test_dir, filename):
+    """
+    Passed the directory and filename of an Iperf result
+    file and return the reported bandwidth or exit if error
+    """
+    filename_full = os.path.join(test_dir, filename)
+    with open(filename_full) as filehandle:
+        data = filehandle.read()
+        data = data.split(",")
+        #*** The result is position 8 and remove trailing newline:
+        return int(str(data[8]).rstrip())
+
 def rotate_log(logger, playbook_dir):
     """
     Run an Ansible playbook to rotate the nmeta log
@@ -464,7 +385,6 @@ def rotate_log(logger, playbook_dir):
     playbook = os.path.join(playbook_dir, LOGROTATE_PLAYBOOK)
     logger.debug("playbook is %s", playbook)
     playbook_cmd = "ansible-playbook " + playbook
-    playbook_cmd += "\""
     logger.debug("playbook_cmd=%s", playbook_cmd)
     logger.info("running Ansible playbook...")
     os.system(playbook_cmd)
@@ -484,7 +404,7 @@ def check_log(logger, playbook_dir):
     os.system(playbook_cmd)
 
     #*** TBD - check for presence of file:
-    
+
 #with file('bla.txt') as input:
 #  for count, line in enumerate(input):
 #    if re.search('foo bar', line):
