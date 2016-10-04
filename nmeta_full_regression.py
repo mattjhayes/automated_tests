@@ -86,6 +86,7 @@ STATISTICAL_THRESHOLD_UNCONSTRAINED = 1000000
 #*** Parameters for analysis of nmeta syslog events:
 LOGROTATE_PLAYBOOK = 'nmeta-full-regression-logrotate-template.yml'
 LOGCHECK_PLAYBOOK = 'nmeta-full-regression-logcheck-template.yml'
+LOG_ERROR_FILENAME = 'errors_logged.txt'
 
 #*** Ansible Playbook directory:
 HOME_DIR = expanduser("~")
@@ -184,7 +185,7 @@ def regression_static(logger, basedir):
             elif test == "constrained-bw-tcp5555":
                 policy_name = "main_policy_regression_static_2.yaml"
             else:
-                print "ERROR: unknown static test type", test
+                logger.critical("ERROR: unknown static test %s", test)
                 sys.exit()
             extra_vars = {'duration': str(STATIC_DURATION),
                         'results_dir': test_dir + "/",
@@ -251,7 +252,7 @@ def regression_identity(logger, basedir):
             elif test == "pc1-constrained-bw":
                 policy_name = "main_policy_regression_identity_2.yaml"
             else:
-                print "ERROR: unknown identity test type", test
+                logger.critical("ERROR: unknown identity test %s", test)
                 sys.exit()
             extra_vars = {'duration': str(IDENTITY_DURATION),
                         'results_dir': test_dir + "/",
@@ -323,7 +324,8 @@ def regression_statistical(logger, basedir):
                 policy_name = \
                        "main_policy_regression_statistical_control.yaml"
             else:
-                print "ERROR: unknown statistical test type", test
+                logger.critical("ERROR: unknown statistical test %s",
+                                                                   test)
                 sys.exit()
             extra_vars = {'duration': str(STATISTICAL_DURATION),
                         'results_dir': test_dir + "/",
@@ -392,7 +394,7 @@ def build_playbook(playbook_name, extra_vars, logger):
         playbook_cmd += " --extra-vars \""
         for key, value in extra_vars.iteritems():
             playbook_cmd += key + "=" + value + " "
-    playbook_cmd += "\""
+        playbook_cmd += "\""
     logger.debug("playbook_cmd=%s", playbook_cmd)
     return playbook_cmd
 
@@ -402,10 +404,9 @@ def rotate_log(logger):
     so that it is fresh for analysis post test
     """
     logger.info("Rotating nmeta syslog output for freshness")
-    playbook = os.path.join(PLAYBOOK_DIR, LOGROTATE_PLAYBOOK)
-    logger.debug("playbook is %s", playbook)
-    playbook_cmd = "ansible-playbook " + playbook
-    logger.debug("playbook_cmd=%s", playbook_cmd)
+    extra_vars = {}
+    playbook_cmd = build_playbook(LOGROTATE_PLAYBOOK, extra_vars,
+                                                                logger)
     logger.info("running Ansible playbook...")
     os.system(playbook_cmd)
 
@@ -415,22 +416,18 @@ def check_log(logger, test_dir):
     should cause the test to be failed so that code can be fixed
     """
     logger.info("Checking nmeta syslog for error or critical messages")
-    playbook = os.path.join(PLAYBOOK_DIR, LOGCHECK_PLAYBOOK)
-    logger.debug("playbook is %s", playbook)
-    playbook_cmd = "ansible-playbook " + playbook
-    playbook_cmd += " --extra-vars "
-    playbook_cmd += "\"results_dir=" + test_dir + "/"
-    playbook_cmd += "\""
-    logger.debug("playbook_cmd=%s", playbook_cmd)
+    extra_vars = {'results_dir': test_dir + "/",
+                'error_filename': LOG_ERROR_FILENAME}
+    playbook_cmd = build_playbook(LOGCHECK_PLAYBOOK, extra_vars,
+                                                                logger)
     logger.info("running Ansible playbook...")
     os.system(playbook_cmd)
-
-    #*** TBD - check for presence of file:
-
-#with file('bla.txt') as input:
-#  for count, line in enumerate(input):
-#    if re.search('foo bar', line):
-#      print line
+    #*** Presence of file indicates ERROR and/or CRITICAL logs:
+    error_file = os.path.join(test_dir, LOG_ERROR_FILENAME)
+    if os.path.isfile(error_file):
+        logger.critical("ERROR and/or CRITICAL logs need attention")
+        logger.info("Check file %s", error_file)
+        sys.exit()
 
 if __name__ == "__main__":
     #*** Run the main function with command line
