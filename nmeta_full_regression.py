@@ -47,6 +47,8 @@ ENVIRONMENT_PLAYBOOK = 'nmeta-full-regression-environment-template.yml'
 #*** Parameters for regression of Static classification:
 STATIC_REPEATS = 1
 STATIC_TESTS = ["constrained-bw-tcp1234", "constrained-bw-tcp5555"]
+STATIC_POLICY_1 = 'main_policy_regression_static.yaml'
+STATIC_POLICY_2 = 'main_policy_regression_static_2.yaml'
 STATIC_DURATION = 10
 STATIC_PLAYBOOK = 'nmeta-full-regression-static-template.yml'
 STATIC_PAUSE_SWITCH2CONTROLLER = 30
@@ -59,6 +61,8 @@ STATIC_THRESHOLD_UNCONSTRAINED = 1000000
 #*** Parameters for regression of Identity classification:
 IDENTITY_REPEATS = 1
 IDENTITY_TESTS = ["lg1-constrained-bw", "pc1-constrained-bw"]
+IDENTITY_POLICY_1 = 'main_policy_regression_identity.yaml'
+IDENTITY_POLICY_2 = 'main_policy_regression_identity_2.yaml'
 IDENTITY_DURATION = 10
 IDENTITY_PLAYBOOK = 'nmeta-full-regression-identity-template.yml'
 IDENTITY_TCP_PORT = 5555
@@ -73,7 +77,9 @@ IDENTITY_THRESHOLD_UNCONSTRAINED = 1000000
 
 #*** Parameters for regression of Statistical classification:
 STATISTICAL_REPEATS = 1
-STATISTICAL_TESTS = ["constrained-bw-iperf", "unconstrained-bw-iperf"]
+STATISTICAL_TESTS = ['constrained-bw-iperf', 'unconstrained-bw-iperf']
+STATISTICAL_POLICY_1 = 'main_policy_regression_statistical.yaml'
+STATISTICAL_POLICY_2 = 'main_policy_regression_statistical_control.yaml'
 STATISTICAL_DURATION = 10
 STATISTICAL_PLAYBOOK = 'nmeta-full-regression-statistical-template.yml'
 STATISTICAL_TCP_PORT = 5555
@@ -82,6 +88,14 @@ STATISTICAL_SLEEP = 30
 STATISTICAL_TEST_FILES = ["pc1.example.com-iperf_result.txt",]
 STATISTICAL_THRESHOLD_CONSTRAINED = 280000
 STATISTICAL_THRESHOLD_UNCONSTRAINED = 1000000
+
+#*** Parameters for performance testing:
+#*** Test effect of different classification policies on performance:
+PERFORMANCE_TESTS = ['static', 'identity', 'statistical']
+PERFORMANCE_COUNT = 30
+PERFORMANCE_PLAYBOOK = 'nmeta-full-regression-performance-template.yml'
+PERFORMANCE_PAUSE_SWITCH2CONTROLLER = 10
+PERFORMANCE_SLEEP = 30
 
 #*** Parameters for analysis of nmeta syslog events:
 LOGROTATE_PLAYBOOK = 'nmeta-full-regression-logrotate-template.yml'
@@ -92,13 +106,12 @@ LOG_ERROR_FILENAME = 'errors_logged.txt'
 HOME_DIR = expanduser("~")
 PLAYBOOK_DIR = os.path.join(HOME_DIR, 'automated_tests')
 
-def main(argv):
+def main():
     """
     Main function of nmeta regression tests.
     Sets up logging, creates the timestamped directory
     and runs functions for the various regression test types
     """
-    version = "0.1.1"
 
     #*** Set up logging:
     logging.basicConfig(level=logging.DEBUG)
@@ -134,6 +147,9 @@ def main(argv):
     logging_fh.setFormatter(formatter)
     logger.addHandler(logging_fh)
 
+    #*** TEMP:
+    regression_performance(logger, basedir)
+
     #*** Capture environment settings:
     regression_environment(logger, basedir)
 
@@ -145,6 +161,9 @@ def main(argv):
 
     #*** Run statistical regression testing:
     regression_statistical(logger, basedir)
+
+    #*** Run performance baseline tests:
+    regression_performance(logger, basedir)
 
     #*** And we're done!:
     logger.info("All testing finished, that's a PASS!")
@@ -172,6 +191,7 @@ def regression_static(logger, basedir):
     test_basedir = os.path.join(basedir, subdir)
     #*** Run tests
     for i in range(STATIC_REPEATS):
+        logger.debug("iteration %s of %s", i+1, STATIC_REPEATS)
         for test in STATIC_TESTS:
             #*** Timestamp for specific test subdirectory:
             timenow = datetime.datetime.now()
@@ -180,10 +200,10 @@ def regression_static(logger, basedir):
             test_dir = os.path.join(test_basedir, test,
                                                     testdir_timestamp)
             rotate_log(logger)
-            if test == "constrained-bw-tcp1234":
-                policy_name = "main_policy_regression_static.yaml"
-            elif test == "constrained-bw-tcp5555":
-                policy_name = "main_policy_regression_static_2.yaml"
+            if test == 'constrained-bw-tcp1234':
+                policy_name = STATIC_POLICY_1
+            elif test == 'constrained-bw-tcp5555':
+                policy_name = STATIC_POLICY_2
             else:
                 logger.critical("ERROR: unknown static test %s", test)
                 sys.exit()
@@ -239,6 +259,7 @@ def regression_identity(logger, basedir):
     test_basedir = os.path.join(basedir, subdir)
     #*** Run tests
     for i in range(IDENTITY_REPEATS):
+        logger.debug("iteration %s of %s", i+1, IDENTITY_REPEATS)
         for test in IDENTITY_TESTS:
             #*** Timestamp for specific test subdirectory:
             timenow = datetime.datetime.now()
@@ -248,9 +269,9 @@ def regression_identity(logger, basedir):
                                                     testdir_timestamp)
             rotate_log(logger)
             if test == "lg1-constrained-bw":
-                policy_name = "main_policy_regression_identity.yaml"
+                policy_name = IDENTITY_POLICY_1
             elif test == "pc1-constrained-bw":
-                policy_name = "main_policy_regression_identity_2.yaml"
+                policy_name = IDENTITY_POLICY_2
             else:
                 logger.critical("ERROR: unknown identity test %s", test)
                 sys.exit()
@@ -310,6 +331,7 @@ def regression_statistical(logger, basedir):
     test_basedir = os.path.join(basedir, subdir)
     #*** Run tests
     for i in range(STATISTICAL_REPEATS):
+        logger.debug("iteration %s of %s", i+1, STATISTICAL_REPEATS)
         for test in STATISTICAL_TESTS:
             #*** Timestamp for specific test subdirectory:
             timenow = datetime.datetime.now()
@@ -318,11 +340,10 @@ def regression_statistical(logger, basedir):
             test_dir = os.path.join(test_basedir, test,
                                                     testdir_timestamp)
             rotate_log(logger)
-            if test == "constrained-bw-iperf":
-                policy_name = "main_policy_regression_statistical.yaml"
-            elif test == "unconstrained-bw-iperf":
-                policy_name = \
-                       "main_policy_regression_statistical_control.yaml"
+            if test == 'constrained-bw-iperf':
+                policy_name = STATISTICAL_POLICY_1
+            elif test == 'unconstrained-bw-iperf':
+                policy_name = STATISTICAL_POLICY_2
             else:
                 logger.critical("ERROR: unknown statistical test %s",
                                                                    test)
@@ -369,6 +390,52 @@ def regression_statistical(logger, basedir):
             logger.info("Sleeping... zzzz")
             time.sleep(STATISTICAL_SLEEP)
 
+def regression_performance(logger, basedir):
+    """
+    Nmeta performance regression testing
+    """
+    logger.info("running performance regression testing")
+    subdir = 'performance'
+    #*** Create subdirectory to write results to:
+    os.chdir(basedir)
+    os.mkdir(subdir)
+    test_basedir = os.path.join(basedir, subdir)
+    #*** Run tests:
+    for test in PERFORMANCE_TESTS:
+        logger.info("running test=%s", test)
+        test_dir = os.path.join(test_basedir, test)
+        rotate_log(logger)
+        if test == "static":
+            policy_name = STATIC_POLICY_1
+        elif test == "identity":
+            policy_name = IDENTITY_POLICY_1
+        elif test == "statistical":
+            policy_name = STATISTICAL_POLICY_1
+        else:
+            logger.critical("ERROR: unknown performance test %s", test)
+            sys.exit()
+        extra_vars = {'count': str(PERFORMANCE_COUNT),
+                        'results_dir': test_dir + "/",
+                        'policy_name': policy_name,
+                        'pause1':
+                               str(PERFORMANCE_PAUSE_SWITCH2CONTROLLER)}
+        playbook_cmd = build_playbook(PERFORMANCE_PLAYBOOK,
+                                            extra_vars, logger)
+        logger.info("running Ansible playbook...")
+        os.system(playbook_cmd)
+
+        #*** Analyse performance results:
+
+        # TBD
+
+        #*** Check for any logs that are CRITICAL or ERROR:
+        check_log(logger, test_dir)
+
+        logger.info("Sleeping... zzzz")
+        time.sleep(PERFORMANCE_SLEEP)
+
+#==================== helper functions ====================
+
 def get_iperf_bw(test_dir, filename):
     """
     Passed the directory and filename of an Iperf result
@@ -413,7 +480,7 @@ def rotate_log(logger):
 def check_log(logger, test_dir):
     """
     Check the nmeta log file to see if it has any log events that
-    should cause the test to be failed so that code can be fixed
+    should cause the test to fail so that code can be fixed
     """
     logger.info("Checking nmeta syslog for error or critical messages")
     extra_vars = {'results_dir': test_dir + "/",
@@ -430,6 +497,5 @@ def check_log(logger, test_dir):
         sys.exit()
 
 if __name__ == "__main__":
-    #*** Run the main function with command line
-    #***  arguments from position 1
-    main(sys.argv[1:])
+    #*** Run the main function
+    main()
